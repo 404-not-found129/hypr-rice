@@ -1,0 +1,35 @@
+{
+  "name": "god-of-war",
+  "timestamp": 1783383600001,
+  "palette": {
+    "colors": [
+      "#0b0d10",
+      "#a62f26",
+      "#6f8f5f",
+      "#c8963e",
+      "#4f7a96",
+      "#8a5a6e",
+      "#7fb2c8",
+      "#cfc6b8",
+      "#4a4f57",
+      "#cc4437",
+      "#8fb27a",
+      "#e0b45e",
+      "#6f9cba",
+      "#ad7a91",
+      "#a3d0e4",
+      "#ece5d8"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/god-of-war/wallhaven-w8pydp.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#c8963e",
+      "cursor": "#7fb2c8",
+      "selection_foreground": "#0b0d10",
+      "selection_background": "#c8963e"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

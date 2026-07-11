@@ -1,0 +1,35 @@
+{
+  "name": "ashen-flame",
+  "timestamp": 1783297200001,
+  "palette": {
+    "colors": [
+      "#030102",
+      "#c47e71",
+      "#f5ae76",
+      "#ffd59c",
+      "#ad637b",
+      "#ea8891",
+      "#ffc765",
+      "#CE9B69",
+      "#615b5f",
+      "#e58d7e",
+      "#ffbe73",
+      "#ffd188",
+      "#cd7190",
+      "#ff94a0",
+      "#ffda59",
+      "#fff2ef"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/elden-ring/wallhaven-jxjyzm.png",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#ad637b",
+      "cursor": "#CE9B69",
+      "selection_foreground": "#030102",
+      "selection_background": "#CE9B69"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

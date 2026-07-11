@@ -1,0 +1,33 @@
+#!/bin/bash
+# Cycle wallpapers within the CURRENT theme's collection
+# (~/Pictures/wallpapers/collections/<theme>/) through Aether so colors
+# follow. The active theme is recorded by themeswitch. Usage: wallcycle [next|prev]
+
+state="$HOME/.config/aether/current-theme"
+theme=$(cat "$state" 2>/dev/null)
+dir="$HOME/Pictures/wallpapers/collections/$theme"
+[ -d "$dir" ] || dir="$HOME/Pictures/wallpapers/collections/elden-ring"
+
+# Shared lock with themeswitch: never run two aether applies at once.
+# Extra presses while one is running are ignored.
+exec 9>/tmp/aether-apply.lock
+flock -n 9 || exit 0
+
+shopt -s nullglob
+walls=("$dir"/*.{jpg,jpeg,png,webp})
+(( ${#walls[@]} )) || exit 1
+
+cur=$(basename "$(readlink "$HOME/Pictures/wallpapers/wall.png" 2>/dev/null)")
+idx=-1
+for i in "${!walls[@]}"; do
+    [[ $(basename "${walls[$i]}") == "$cur" ]] && idx=$i && break
+done
+
+n=${#walls[@]}
+if [[ $1 == prev ]]; then
+    idx=$(( (idx - 1 + n) % n ))
+else
+    idx=$(( (idx + 1) % n ))
+fi
+
+aether --generate "${walls[$idx]}"

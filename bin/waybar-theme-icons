@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Swap ALL waybar icons (logo, workspaces, clock, calendar, cpu, memory,
+volume, power) to match the active Aether theme. Called from the Aether
+post-apply hook, before waybar is reloaded. Glyphs verified against
+JetBrainsMono Nerd Font's cmap."""
+import json
+from pathlib import Path
+
+STD = {  # standard/fallback set (original bar)
+    "logo": "\U000f08c7",                                    # arch
+    "ws_active": "\U000f0baf", "ws_inactive": "\U000f02a0",  # pacman / ghost
+    "clock": "\U000f0954", "calendar": "\U000f00ed",
+    "cpu": "\U000f0ee0", "memory": "\U000f035b",
+    "volume": ["\U000f057f", "\U000f0580", "\U000f057e"],
+    "power": "⏻",
+}
+
+def theme_set(**kw):
+    s = dict(STD)
+    s.update(kw)
+    return s
+
+SETS = {
+    "elden-ring": theme_set(
+        logo="\U000f0787", ws_active="\U000f0238", ws_inactive="\U000f0766",
+        clock="\U000f051f", calendar="\U000f070e",            # hourglass / scroll
+        cpu="\U000f04e5", memory="\U000f09d1",                # sword / brain
+        volume=["\U000f0059"] * 3, power="\U000f068c"),       # bullhorn / skull
+    "ashen-flame": theme_set(
+        logo="\U000f0238", ws_active="\U000f0238", ws_inactive="\U000f0766",
+        clock="\U000f051f", calendar="\U000f070e",
+        cpu="\U000f0238", memory="\U000f0093",                # fire / flask
+        volume=["\U000f0059"] * 3, power="\U000f068c"),
+    "god-of-war": theme_set(
+        logo="\U000f08c8", ws_active="\U000f04e5", ws_inactive="\U000f0766",
+        clock="\U000f051f", calendar="\U000f070e",
+        cpu="\U000f08c8", memory="\U000f0498",                # axe / shield
+        volume=["\U000f0059"] * 3, power="\U000f068c"),
+    "fallout": theme_set(
+        logo="\U000f043c", ws_active="\U000f043c", ws_inactive="\U000f0766",
+        cpu="\U000f061a", memory="\U000f01bc",                # chip / database
+        volume=["\U000f043b"] * 3, power="\U000f043c"),       # radio tower / rad
+    "cyberpunk-2077": theme_set(
+        logo="\U000f068c", ws_active="\U000f061a", ws_inactive="\U000f0766",
+        cpu="\U000f0241", memory="\U000f061a",                # flash / chip
+        volume=["\U000f095b"] * 3, power="\U000f06a5"),       # sine wave / plug
+    "tokyo-night": theme_set(
+        logo="\U000f11a1", ws_active="\U000f0594", ws_inactive="\U000f0766",
+        cpu="\U000f0146", memory="\U000f01bc",                # city / database
+        volume=["\U000f075a"] * 3, power="\U000f04ce"),       # music / star
+    "gruvbox": theme_set(                                     # retro = classic icons
+        logo="\U000f0176", ws_active="\U000f0765", ws_inactive="\U000f0766"),
+    "catppuccin-mocha": theme_set(
+        logo="\U000f011b",                                    # cat (keeps pacman ws)
+        cpu="\U000f03e9", memory="\U000f02d1",                # paw / heart
+        volume=["\U000f075a"] * 3),
+}
+
+state = Path.home() / ".config/aether/current-theme"
+theme = state.read_text().strip() if state.exists() else ""
+s = SETS.get(theme, STD)
+
+cfg_path = Path.home() / ".config/waybar/config.jsonc"
+cfg = json.loads(cfg_path.read_text())
+
+cfg["custom/logo"]["format"] = s["logo"]
+ws = cfg["hyprland/workspaces"]["format-icons"]
+ws["active"], ws["default"], ws["empty"] = s["ws_active"], s["ws_inactive"], s["ws_inactive"]
+cfg["clock"]["format"] = f"{s['clock']}  {{:%H:%M}}"
+cfg["clock"]["format-alt"] = f"{s['calendar']}  {{:%A, %d %B %Y}}"
+cfg["cpu"]["format"] = f"{s['cpu']}  {{usage}}%"
+cfg["memory"]["format"] = f"{s['memory']}  {{percentage}}%"
+cfg["pulseaudio"]["format-icons"]["default"] = s["volume"]
+cfg["custom/power"]["format"] = s["power"]
+
+cfg_path.write_text(json.dumps(cfg, indent=4, ensure_ascii=False) + "\n")
+print(f"{theme or 'default'} icons applied")

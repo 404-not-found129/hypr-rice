@@ -1,0 +1,110 @@
+/* Walker — Aether (colors follow the active theme) */
+@import url("../../../aether/theme/walker.css");
+
+* {
+  all: unset;
+  font-family: "JetBrainsMono Nerd Font";
+}
+
+.normal-icons { -gtk-icon-size: 18px; }
+.large-icons  { -gtk-icon-size: 40px; }
+scrollbar { opacity: 0; }
+
+popover {
+  background: alpha(@background, 0.95);
+  border: 1px solid alpha(@accent, 0.4);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+/* frosted glass panel — hyprland blurs the walker layer */
+.box-wrapper {
+  background: alpha(@background, 0.72);
+  border: 2px solid alpha(@accent, 0.65);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.45);
+}
+
+.search-container { border-radius: 12px; }
+
+.input {
+  caret-color: @accent2;
+  background: alpha(@foreground, 0.07);
+  border: 1px solid alpha(@accent, 0.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  color: @text;
+}
+.input placeholder { opacity: 0.4; }
+.input selection { background: alpha(@accent, 0.35); }
+
+.list { color: @text; }
+
+.item-box {
+  border-radius: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid transparent;
+}
+
+child:selected .item-box,
+row:selected .item-box {
+  background: alpha(@accent, 0.18);
+  border-left: 3px solid @accent;
+}
+child:selected .item-text,
+row:selected .item-text {
+  color: @accent2;
+}
+
+.item-text { font-size: 14px; }
+.item-subtext { font-size: 11px; opacity: 0.45; }
+.item-image { margin-right: 6px; }
+.item-image-text { font-size: 28px; }
+
+.item-quick-activation {
+  background: alpha(@accent, 0.2);
+  border-radius: 6px;
+  padding: 8px;
+  color: @text;
+}
+
+.preview,
+.preview-box {
+  border: 1px solid alpha(@accent, 0.25);
+  border-radius: 12px;
+  color: @text;
+}
+.preview .large-icons { -gtk-icon-size: 64px; }
+
+.elephant-hint,
+.placeholder { color: alpha(@text, 0.6); }
+
+.calc .item-text { font-size: 22px; }
+.symbols .item-image { font-size: 22px; }
+
+.keybinds {
+  padding-top: 10px;
+  border-top: 1px solid alpha(@border, 0.6);
+  font-size: 11px;
+  color: alpha(@text, 0.7);
+}
+.keybind-button { opacity: 0.5; }
+.keybind-button:hover { opacity: 0.8; }
+.keybind-bind { text-transform: lowercase; opacity: 0.35; }
+.keybind-label {
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid alpha(@text, 0.35);
+}
+
+.error {
+  padding: 10px;
+  border-radius: 8px;
+  background: alpha(@accent, 0.85);
+  color: @background;
+}
+
+:not(.calc).current { font-style: italic; }

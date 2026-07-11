@@ -1,0 +1,35 @@
+{
+  "name": "elden-ring",
+  "timestamp": 1783297200000,
+  "palette": {
+    "colors": [
+      "#0e0b07",
+      "#9e3a2f",
+      "#7d8f4e",
+      "#d4a017",
+      "#6b7d99",
+      "#a05e6e",
+      "#7ba591",
+      "#d8c7a2",
+      "#5f584a",
+      "#c85a4a",
+      "#a3b665",
+      "#f0c94a",
+      "#8ea6c4",
+      "#c07a8c",
+      "#98c4ab",
+      "#f2e8d5"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/elden-ring/wallhaven-m9mwqy.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#d4a017",
+      "cursor": "#f0c94a",
+      "selection_foreground": "#0e0b07",
+      "selection_background": "#d4a017"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

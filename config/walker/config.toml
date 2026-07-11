@@ -1,0 +1,13 @@
+# Walker — user overrides (merged with built-in defaults)
+theme = "aether"
+close_when_open = true
+
+[providers]
+# apps + calculator only; commands still work with the ">" prefix, web search with "@"
+default = ["desktopapplications", "calc"]
+empty = ["desktopapplications"]
+
+# Default prefixes (from built-in config):
+#   ;  providerlist   >  runner      /  files
+#   .  symbols        =  calc        @  websearch
+#   :  clipboard      $  windows     %  bookmarks

@@ -1,0 +1,4 @@
+{
+    "template": "marker.conf",
+    "destination": "~/.cache/aether-hypr-marker.conf"
+}

@@ -1,0 +1,20 @@
+/* Aether template override: full palette for waybar (style.css imports the
+   generated ~/.config/aether/theme/waybar.css). Names kept from the original
+   Catppuccin scheme so style.css rules don't need renaming. */
+@define-color background {background};
+@define-color foreground {foreground};
+
+@define-color base      {background};
+@define-color mantle    {color0};
+@define-color surface0  {color8};
+@define-color surface1  {color8};
+@define-color text      {foreground};
+@define-color subtext0  {color7};
+@define-color mauve     {accent};
+@define-color blue      {blue};
+@define-color lavender  {cursor};
+@define-color green     {green};
+@define-color yellow    {yellow};
+@define-color peach     {color11};
+@define-color red       {red};
+@define-color teal      {cyan};

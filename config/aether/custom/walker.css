@@ -1,0 +1,9 @@
+@define-color background {background};
+@define-color base {background};
+@define-color foreground {foreground};
+@define-color text {foreground};
+@define-color border {color8};
+@define-color selected-text {accent};
+@define-color accent {accent};
+@define-color accent2 {cursor};
+@define-color muted {color8};

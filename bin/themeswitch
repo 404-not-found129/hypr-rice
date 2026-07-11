@@ -1,0 +1,46 @@
+#!/bin/bash
+# Theme switcher: pick an Aether blueprint, or re-extract from the current
+# wallpaper. Applying goes through Aether so everything follows (wallpaper,
+# borders, terminal, waybar, hyprlock).
+
+# Icon per theme; game themes get a controller, aesthetic themes a palette.
+icon_for() {
+    case "$1" in
+        elden-ring)                     echo "󰞇" ;;
+        ashen-flame)                    echo "󰈸" ;;
+        cyberpunk-2077|god-of-war|fallout) echo "󰊴" ;;
+        *)                              echo "󰏘" ;;
+    esac
+}
+
+menu="󰋩  auto (from current wallpaper)"
+while IFS= read -r name; do
+    [ -z "$name" ] && continue
+    menu="$menu
+$(icon_for "$name")  $name"
+done < <(aether --list-blueprints | sort)
+
+choice=$(printf '%s\n' "$menu" | walker --dmenu -p "Theme")
+[ -z "$choice" ] && exit 0
+
+# Strip the icon column
+choice=$(printf '%s' "$choice" | sed 's/^[^ ]*  //')
+
+# Shared lock with wallcycle: wait for any in-flight apply to finish so two
+# aether processes never write the theme at once (that mixes wallpapers).
+exec 9>/tmp/aether-apply.lock
+flock -w 60 9 || exit 1
+
+if [[ $choice == auto* ]]; then
+    aether --generate "$(readlink "$HOME/Pictures/wallpapers/wall.png")"
+else
+    # Record the theme BEFORE applying: the post-apply hook reads it mid-apply
+    # (waybar icons, folder tint), and wallcycle scopes to it.
+    printf '%s' "$choice" > "$HOME/.config/aether/current-theme"
+    aether --apply-blueprint "$choice"
+
+    # The Aether GUI's local-wallpaper browser scans ~/Wallpapers: fill it
+    # with links to this theme's collection so it only shows these.
+    find "$HOME/Wallpapers" -maxdepth 1 -type l -delete 2>/dev/null
+    ln -sf "$HOME/Pictures/wallpapers/collections/$choice"/* "$HOME/Wallpapers/" 2>/dev/null
+fi

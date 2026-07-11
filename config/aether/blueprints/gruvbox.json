@@ -1,0 +1,35 @@
+{
+  "name": "gruvbox",
+  "timestamp": 1783383600004,
+  "palette": {
+    "colors": [
+      "#282828",
+      "#cc241d",
+      "#98971a",
+      "#d79921",
+      "#458588",
+      "#b16286",
+      "#689d6a",
+      "#a89984",
+      "#928374",
+      "#fb4934",
+      "#b8bb26",
+      "#fabd2f",
+      "#83a598",
+      "#d3869b",
+      "#8ec07c",
+      "#ebdbb2"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/gruvbox/wallhaven-yqe81l.png",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#d79921",
+      "cursor": "#ebdbb2",
+      "selection_foreground": "#282828",
+      "selection_background": "#d79921"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

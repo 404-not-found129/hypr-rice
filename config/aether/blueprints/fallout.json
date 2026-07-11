@@ -1,0 +1,35 @@
+{
+  "name": "fallout",
+  "timestamp": 1783383600002,
+  "palette": {
+    "colors": [
+      "#0a0f0a",
+      "#c25b4a",
+      "#2fd75f",
+      "#d9c56a",
+      "#3f8f74",
+      "#8f6f5a",
+      "#5fd7a8",
+      "#8fdfa8",
+      "#2e4a36",
+      "#e07a5f",
+      "#63f2a1",
+      "#f0dc82",
+      "#5fb396",
+      "#b08a6e",
+      "#8af5c2",
+      "#d8ffe8"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/fallout/wallhaven-ogypkl.png",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#2fd75f",
+      "cursor": "#63f2a1",
+      "selection_foreground": "#0a0f0a",
+      "selection_background": "#2fd75f"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

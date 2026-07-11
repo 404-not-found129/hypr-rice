@@ -1,0 +1,35 @@
+{
+  "name": "cyberpunk-2077",
+  "timestamp": 1783383600000,
+  "palette": {
+    "colors": [
+      "#050505",
+      "#ff003c",
+      "#00ff9f",
+      "#fcee0a",
+      "#1ea8c4",
+      "#d600ff",
+      "#5ef6ff",
+      "#e8e6d0",
+      "#4a4a44",
+      "#ff5c72",
+      "#5cffc5",
+      "#fff65c",
+      "#5ed6e6",
+      "#e05cff",
+      "#9ffbff",
+      "#fffdea"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/cyberpunk-2077/wallhaven-968d2x.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#fcee0a",
+      "cursor": "#5ef6ff",
+      "selection_foreground": "#050505",
+      "selection_background": "#fcee0a"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}
