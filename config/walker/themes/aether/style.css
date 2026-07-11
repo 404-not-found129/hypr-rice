@@ -1,5 +1,6 @@
 /* Walker — Aether (colors follow the active theme) */
 @import url("../../../aether/theme/walker.css");
+@import url("icons.css");
 
 * {
   all: unset;

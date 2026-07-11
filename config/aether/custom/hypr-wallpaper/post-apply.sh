@@ -8,3 +8,4 @@ hyprctl reload
 "$HOME/.local/bin/waybar-theme-icons" >/dev/null 2>&1   # per-theme logo/workspace icons
 pkill -SIGUSR2 waybar   # reload config + style with the new palette
 "$HOME/.local/bin/papirus-accent" >/dev/null 2>&1   # tint folder icons to the accent
+"$HOME/.local/bin/icon-tint" >/dev/null 2>&1        # tint launcher app icons to the accent

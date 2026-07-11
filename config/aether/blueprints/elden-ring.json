@@ -31,5 +31,7 @@
     "lockedColors": []
   },
   "adjustments": {},
-  "settings": {}
+  "settings": {
+    "includeGtk": true
+  }
 }
