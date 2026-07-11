@@ -65,7 +65,7 @@ backup() { # backup <path>
 }
 
 info "Installing configs (existing ones are backed up to $BACKUP)..."
-for d in hypr waybar alacritty kitty swaync walker; do
+for d in hypr waybar alacritty kitty swaync walker fastfetch; do
   backup "$HOME/.config/$d"
   mkdir -p "$HOME/.config/$d"
   cp -r "$REPO/config/$d/." "$HOME/.config/$d/"

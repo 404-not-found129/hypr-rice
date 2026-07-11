@@ -5,7 +5,9 @@ A Hyprland rice with **one-click switchable game themes**. Pick a theme and
 (colors *and* icons), lock screen, notification center, and even your folder
 icon tint.
 
-![screenshot](screenshot.png)
+![demo](demo.gif)
+
+*(full-quality video: [demo.mp4](demo.mp4))*
 
 ## Themes
 
