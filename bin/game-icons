@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Generate a per-theme duotone app icon set from the game palette.
+"""Generate a per-theme app icon set styled after the active game.
 
-For the active Aether theme, renders every installed app's Papirus icon as a
-duotone (dark shade -> accent highlight) into an icon theme
-~/.local/share/icons/Aether-Game-<theme>/ (inherits Papirus-Dark), then
-activates it via gsettings. Cached: generation runs once per theme.
+Unlike a color tint, each theme gets its own badge/frame motif (an Elden Ring
+rune-seal, a Fallout Pip-Boy bezel, a Cyberpunk chamfered chip, etc.) drawn
+from the theme's palette. Each app's original, full-color icon sits centered
+on top of that badge -- like a real icon pack, not a recolor filter.
+
+Installed as an icon theme ~/.local/share/icons/Aether-Game-<theme>/
+(inherits Papirus-Dark for anything not covered), then activated via both
+gsettings AND a direct settings.ini patch (this Hyprland setup has no
+XSettings daemon, so gsettings alone never reaches running GTK apps).
 Called from the Aether post-apply hook.
 """
-import colorsys
-import configparser
 import re
 import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -22,20 +24,78 @@ state = HOME / ".config/aether/current-theme"
 theme = state.read_text().strip() if state.exists() else "default"
 
 toml = (HOME / ".config/aether/theme/colors.toml").read_text()
-def color(key):
-    m = re.search(rf'^{key}\s*=\s*"#([0-9a-fA-F]{{6}})"', toml, re.M)
-    return m.group(1) if m else None
+cols = {m.group(1): m.group(2) for m in re.finditer(r'^(\w+)\s*=\s*"([^"]*)"', toml, re.M)}
 
-accent = color("accent") or "d4a017"
+bg = cols.get("background", "#0e0b07")
+plate = cols.get("lighter_bg", bg)
+border = cols.get("accent", "#d4a017")
+accent2 = cols.get("cursor", border)
+muted = cols.get("muted", border)
 
-# Build a monochrome ramp from the accent: deep shadow -> bright highlight
-r, g, b = (int(accent[i:i + 2], 16) / 255 for i in (0, 2, 4))
-h, l, s = colorsys.rgb_to_hls(r, g, b)
-def hex_of(hh, ll, ss):
-    rr, gg, bb = colorsys.hls_to_rgb(hh, ll, ss)
-    return f"{int(rr*255):02x}{int(gg*255):02x}{int(bb*255):02x}"
-dark = hex_of(h, max(0.07, l * 0.22), min(1, s * 0.9))
-light = hex_of(h, min(0.72, max(0.55, l * 1.35)), s)
+
+def badge_svg(theme, bg, plate, border, accent2, muted):
+    """A 128x128 badge motif distinct per theme -- the theme's identity lives
+    in this frame, not in a recolor of the app icon."""
+    if theme in ("elden-ring", "ashen-flame"):
+        body = f'''
+        <rect x="6" y="6" width="116" height="116" rx="18" fill="{plate}" stroke="{border}" stroke-width="4"/>
+        <circle cx="64" cy="64" r="46" fill="none" stroke="{accent2}" stroke-width="2" opacity="0.55"/>
+        <line x1="64" y1="9"  x2="64" y2="21"  stroke="{border}" stroke-width="3"/>
+        <line x1="64" y1="107" x2="64" y2="119" stroke="{border}" stroke-width="3"/>
+        <line x1="9"  y1="64" x2="21"  y2="64" stroke="{border}" stroke-width="3"/>
+        <line x1="107" y1="64" x2="119" y2="64" stroke="{border}" stroke-width="3"/>'''
+        if theme == "ashen-flame":
+            body += f'''
+        <path d="M 14 108 L 22 119 L 30 108 L 24 99 Z" fill="{border}" opacity="0.85"/>
+        <path d="M 98 108 L 106 119 L 114 108 L 108 99 Z" fill="{border}" opacity="0.85"/>'''
+        return body
+
+    if theme == "god-of-war":
+        return f'''
+        <rect x="6" y="6" width="116" height="116" rx="14" fill="{plate}" stroke="{border}" stroke-width="4"/>
+        <rect x="17" y="17" width="94" height="94" rx="8" fill="none" stroke="{muted}" stroke-width="2" opacity="0.7"/>
+        <path d="M 6 6 L 28 6 L 6 28 Z" fill="{accent2}"/>
+        <path d="M 122 122 L 100 122 L 122 100 Z" fill="{accent2}" opacity="0.7"/>'''
+
+    if theme == "fallout":
+        return f'''
+        <rect x="4" y="4" width="120" height="120" rx="16" fill="{plate}" stroke="{border}" stroke-width="8"/>
+        <rect x="18" y="18" width="92" height="92" rx="6" fill="{bg}" opacity="0.6"/>
+        <line x1="18" y1="59" x2="110" y2="59" stroke="{border}" stroke-width="2" opacity="0.45"/>
+        <line x1="18" y1="70" x2="110" y2="70" stroke="{border}" stroke-width="2" opacity="0.3"/>
+        <circle cx="20" cy="112" r="5" fill="{border}"/>
+        <circle cx="108" cy="112" r="5" fill="{border}"/>'''
+
+    if theme == "cyberpunk-2077":
+        return f'''
+        <polygon points="24,6 104,6 122,24 122,104 104,122 24,122 6,104 6,24"
+                 fill="{plate}" stroke="{border}" stroke-width="4"/>
+        <line x1="6" y1="24" x2="24" y2="6" stroke="{accent2}" stroke-width="2.5"/>
+        <line x1="122" y1="104" x2="104" y2="122" stroke="{accent2}" stroke-width="2.5"/>
+        <rect x="104" y="9" width="9" height="9" fill="{accent2}"/>'''
+
+    if theme == "tokyo-night":
+        return f'''
+        <rect x="6" y="6" width="116" height="116" rx="22" fill="{plate}" stroke="{border}" stroke-width="4"/>
+        <circle cx="30" cy="32" r="1.6" fill="{accent2}" opacity="0.6"/>
+        <circle cx="44" cy="20" r="1.2" fill="{accent2}" opacity="0.5"/>
+        <circle cx="20" cy="48" r="1.2" fill="{accent2}" opacity="0.4"/>
+        <circle cx="100" cy="24" r="9" fill="{accent2}"/>
+        <circle cx="106" cy="19" r="9" fill="{plate}"/>'''
+
+    if theme == "gruvbox":
+        return f'''
+        <rect x="7" y="7" width="114" height="114" rx="12" fill="{plate}" stroke="{border}" stroke-width="6"/>
+        <rect x="16" y="16" width="96" height="96" rx="8" fill="none" stroke="{border}" stroke-width="1.5" opacity="0.5"/>'''
+
+    if theme == "catppuccin-mocha":
+        return f'''
+        <rect x="8" y="10" width="112" height="112" rx="26" fill="{plate}" stroke="{border}" stroke-width="4"/>
+        <path d="M 26 16 L 40 16 L 30 2 Z"  fill="{plate}" stroke="{border}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M 88 16 L 102 16 L 98 2 Z" fill="{plate}" stroke="{border}" stroke-width="3" stroke-linejoin="round"/>'''
+
+    return f'<rect x="6" y="6" width="116" height="116" rx="18" fill="{plate}" stroke="{border}" stroke-width="4"/>'
+
 
 name = f"Aether-Game-{theme}"
 out = HOME / ".local/share/icons" / name
@@ -46,13 +106,18 @@ if not (apps.exists() and any(apps.iterdir())):
     (out / "index.theme").write_text(
         "[Icon Theme]\n"
         f"Name={name}\n"
-        "Comment=Duotone game icons generated by hypr-rice\n"
+        "Comment=Game-badged icons generated by hypr-rice\n"
         "Inherits=Papirus-Dark,Papirus,hicolor\n"
         "Directories=64x64/apps\n\n"
         "[64x64/apps]\nSize=64\nType=Fixed\nContext=Applications\n"
     )
 
-    # icon names of every installed app
+    badge = out / "badge.png"
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">{badge_svg(theme, bg, plate, border, accent2, muted)}</svg>'
+    subprocess.run(["rsvg-convert", "-w", "128", "-h", "128", "-o", str(badge)],
+                   input=svg.encode(), check=True)
+
+    import configparser
     wanted = set()
     for d in (Path("/usr/share/applications"), HOME / ".local/share/applications"):
         if not d.is_dir():
@@ -71,7 +136,6 @@ if not (apps.exists() and any(apps.iterdir())):
         svg = PAPIRUS / f"{icon}.svg"
         if svg.exists():
             return svg
-        # some .desktop files use device/place icons (e.g. network-wired)
         for ctx in ("devices", "places", "mimetypes"):
             alt = PAPIRUS.parent / ctx / f"{icon}.svg"
             if alt.exists():
@@ -96,29 +160,33 @@ if not (apps.exists() and any(apps.iterdir())):
             return
         png = apps / f"{icon}.png"
         try:
+            # original icon, FULL COLOR, no tint -- squared and padded to 76x76
             if src.suffix == ".svg":
-                raw = subprocess.run(
-                    ["rsvg-convert", "-w", "128", "-h", "128", str(src)],
+                glyph = subprocess.run(
+                    ["rsvg-convert", "-w", "76", "-h", "76", str(src)],
                     capture_output=True, check=True).stdout
             else:
-                raw = src.read_bytes()
+                glyph = subprocess.run(
+                    ["magick", str(src), "-resize", "76x76",
+                     "-background", "none", "-gravity", "center",
+                     "-extent", "76x76", "png:-"],
+                    capture_output=True, check=True).stdout
             subprocess.run(
-                ["magick", "png:-", "-resize", "64x64",
-                 "-channel", "RGB", "-colorspace", "gray",
-                 "(", "-size", "1x256", f"gradient:#{light}-#{dark}", "-rotate", "180", ")",
-                 "-clut", "+channel", str(png)],
-                input=raw, capture_output=True, check=True)
+                ["magick", str(badge),
+                 "(", "png:-", "-resize", "76x76", ")",
+                 "-gravity", "center", "-compose", "over", "-composite",
+                 "-resize", "64x64", str(png)],
+                input=glyph, capture_output=True, check=True)
         except subprocess.CalledProcessError:
             pass
 
     with ThreadPoolExecutor(max_workers=12) as ex:
         list(ex.map(render, sorted(wanted)))
 
-    subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(out)],
-                   capture_output=True)
+    subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(out)], capture_output=True)
 
-subprocess.run(["gsettings", "set", "org.gnome.desktop.interface",
-                "icon-theme", name], capture_output=True)
+subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", name],
+               capture_output=True)
 
 # gsettings alone doesn't reach GTK apps here: there's no xsettingsd /
 # gnome-settings-daemon on this Hyprland setup to bridge it live, so GTK

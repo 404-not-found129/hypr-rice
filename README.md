@@ -2,8 +2,10 @@
 
 A Hyprland rice with **one-click switchable game themes**. Pick a theme and
 *everything* follows: wallpaper, window borders, terminal colors, waybar
-(colors *and* icons), lock screen, notification center, your folder icon tint, and even the app icons
-in the launcher (regenerated as duotone game-palette icons per theme).
+(colors *and* icons), lock screen, notification center, your folder icon tint, and even the app icons in the launcher --
+each theme draws its own badge frame (an Elden Ring rune-seal, a Fallout
+Pip-Boy bezel, a Cyberpunk chamfered chip, ...) with every app's real,
+full-color icon sitting on top, like a proper icon pack rather than a tint.
 
 ![demo](demo.gif)
 
@@ -77,9 +79,10 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
   `awww` wallpaper daemon, reloads Hyprland (borders re-read the palette via
   Lua), swaps waybar's per-theme icons, reloads waybar, tints Papirus folder
   icons to the accent color, and regenerates the app-icon set (see below).
-- **`bin/game-icons`** renders every installed app's icon as a duotone mapped
-  onto the theme's palette, installs it as a real icon theme
-  (`~/.local/share/icons/Aether-Game-<theme>`), and points both
+- **`bin/game-icons`** draws a per-theme badge/frame motif (distinct per
+  game, not a recolor — see the table above for the vibe) and composites
+  every installed app's real, unmodified icon on top, installing the result
+  as a real icon theme (`~/.local/share/icons/Aether-Game-<theme>`). Points both
   `gtk-icon-theme-name` in `~/.config/gtk-{3,4}.0/settings.ini` **and**
   `gsettings` at it. Both are needed: this setup has no XSettings daemon
   (no `gnome-settings-daemon`/`xsettingsd`) to bridge `gsettings` into
