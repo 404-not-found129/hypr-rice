@@ -2,8 +2,8 @@
 
 A Hyprland rice with **one-click switchable game themes**. Pick a theme and
 *everything* follows: wallpaper, window borders, terminal colors, waybar
-(colors *and* icons), lock screen, notification center, and even your folder
-icon tint.
+(colors *and* icons), lock screen, notification center, your folder icon tint, and even the app icons
+in the launcher (regenerated as duotone game-palette icons per theme).
 
 ![demo](demo.gif)
 
