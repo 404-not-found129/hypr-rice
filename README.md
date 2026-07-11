@@ -45,7 +45,7 @@ whatever wallpaper is currently showing.
 `hyprland.lua`), an internet connection, and `sudo`.
 
 ```bash
-git clone <https://github.com/404-not-found129/hypr-rice.git> && cd hypr-rice
+git clone https://github.com/404-not-found129/hypr-rice.git && cd hypr-rice
 chmod +x install.sh
 ./install.sh
 ```
