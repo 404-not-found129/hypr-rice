@@ -75,8 +75,16 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
 - A **post-apply hook** (`config/aether/custom/hypr-wallpaper/post-apply.sh`)
   runs after every apply: it re-points the wallpaper symlink, drives the
   `awww` wallpaper daemon, reloads Hyprland (borders re-read the palette via
-  Lua), swaps waybar's per-theme icons, reloads waybar, and tints Papirus
-  folder icons to the accent color.
+  Lua), swaps waybar's per-theme icons, reloads waybar, tints Papirus folder
+  icons to the accent color, and regenerates the app-icon set (see below).
+- **`bin/game-icons`** renders every installed app's icon as a duotone mapped
+  onto the theme's palette, installs it as a real icon theme
+  (`~/.local/share/icons/Aether-Game-<theme>`), and points both
+  `gtk-icon-theme-name` in `~/.config/gtk-{3,4}.0/settings.ini` **and**
+  `gsettings` at it. Both are needed: this setup has no XSettings daemon
+  (no `gnome-settings-daemon`/`xsettingsd`) to bridge `gsettings` into
+  running GTK apps, so without the `settings.ini` patch the icon theme only
+  ever *looks* applied but nothing on screen changes.
 - **`bin/themeswitch`** (Super+T) is a walker menu over the blueprints; it
   records the active theme and mirrors that theme's wallpapers into
   `~/Wallpapers` so the Aether GUI's local browser only shows on-theme ones.
@@ -110,6 +118,11 @@ one), make a matching wallpaper folder in
   classic syntax.
 - **A wallpaper failed to download** — wallhaven throttles sometimes; re-run
   `./install.sh`, it skips what already exists.
+- **App icons don't change with the theme** — something (nwg-look,
+  lxappearance, a distro default) may have put a hardcoded
+  `gtk-icon-theme-name=` line back in `~/.config/gtk-3.0/settings.ini` or
+  `gtk-4.0/settings.ini` after `game-icons` set it. Re-running any theme
+  switch (`Super+T`) rewrites that line back to the active theme's icon set.
 
 ## Credits
 

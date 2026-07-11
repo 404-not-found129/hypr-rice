@@ -119,6 +119,22 @@ if not (apps.exists() and any(apps.iterdir())):
 
 subprocess.run(["gsettings", "set", "org.gnome.desktop.interface",
                 "icon-theme", name], capture_output=True)
+
+# gsettings alone doesn't reach GTK apps here: there's no xsettingsd /
+# gnome-settings-daemon on this Hyprland setup to bridge it live, so GTK
+# reads gtk-icon-theme-name straight out of settings.ini at startup. Patch
+# that directly or the icon theme silently never changes.
+for ini in (HOME / ".config/gtk-3.0/settings.ini", HOME / ".config/gtk-4.0/settings.ini"):
+    if not ini.exists():
+        continue
+    text = ini.read_text()
+    line = f"gtk-icon-theme-name={name}"
+    if re.search(r"^gtk-icon-theme-name=.*$", text, re.M):
+        text = re.sub(r"^gtk-icon-theme-name=.*$", line, text, flags=re.M)
+    else:
+        text = text.replace("[Settings]", f"[Settings]\n{line}", 1)
+    ini.write_text(text)
+
 # walker caches icons per-process; bounce its service so it picks up the set
 subprocess.run(["pkill", "-x", "walker"], capture_output=True)
 subprocess.Popen(["setsid", "walker", "--gapplication-service"],
