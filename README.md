@@ -13,14 +13,14 @@ icon tint.
 
 | Theme | Vibe | Waybar identity |
 |---|---|---|
-| 󰞇 **elden-ring** | Erdtree gold on deep umber *(default)* | crossed swords, embers, hourglass |
-| 󰈸 **ashen-flame** | dark fiery reds | flames, flask |
-| 󰣈 **god-of-war** | Norse gold & frost, Kratos art | axe, sword, shield |
-| 󰐼 **fallout** | Pip-Boy green terminal | radioactive, radio tower |
-| 󰚌 **cyberpunk-2077** | Night City black & construct yellow | samurai skull, chips, lightning |
-| 󱆡 **tokyo-night** | indigo night city | torii gate, crescent moon |
-| 󰅶 **gruvbox** | warm retro amber | coffee + classic icons |
-| 󰄛 **catppuccin-mocha** | pastel mauve | cat, paw, Pac-Man workspaces |
+|  **elden-ring** | Erdtree gold on deep umber *(default)* | crossed swords, embers, hourglass |
+|  **ashen-flame** | dark fiery reds | flames, flask |
+|  **god-of-war** | Norse gold & frost, Kratos art | axe, sword, shield |
+|  **fallout** | Pip-Boy green terminal | radioactive, radio tower |
+|  **cyberpunk-2077** | Night City black & construct yellow | samurai skull, chips, lightning |
+|  **tokyo-night** | indigo night city | torii gate, crescent moon |
+|  **gruvbox** | warm retro amber | coffee + classic icons |
+|  **catppuccin-mocha** | pastel mauve | cat, paw, Pac-Man workspaces |
 
 Each theme has its **own wallpaper collection** — cycling never leaks another
 theme's wallpapers — and an extra **auto mode** extracts a palette from
@@ -45,7 +45,8 @@ whatever wallpaper is currently showing.
 `hyprland.lua`), an internet connection, and `sudo`.
 
 ```bash
-git clone <this-repo> && cd hypr-rice
+git clone <https://github.com/404-not-found129/hypr-rice.git> && cd hypr-rice
+chmod +x install.sh
 ./install.sh
 ```
 
