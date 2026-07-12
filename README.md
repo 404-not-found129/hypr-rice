@@ -2,7 +2,8 @@
 
 A Hyprland rice with **one-click switchable game themes**. Pick a theme and
 *everything* follows: wallpaper, window borders, terminal colors, waybar
-(colors *and* icons), lock screen, notification center, your folder icon tint, and even the app icons in the launcher --
+(colors *and* icons), lock screen, notification center, your folder icon
+tint, the mouse cursor set, and even the app icons in the launcher --
 each theme draws its own badge frame, and every app in the launcher gets
 one of a *pool* of small original emblems for that theme (sword, shield,
 coin, flask, gear, sprig, axe, torii gate, radiation trefoil, paw print,
@@ -94,6 +95,14 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
   (no `gnome-settings-daemon`/`xsettingsd`) to bridge `gsettings` into
   running GTK apps, so without the `settings.ini` patch the icon theme only
   ever *looks* applied but nothing on screen changes.
+- **`bin/game-cursors`** recolors the open-source Breeze cursor SVGs to a
+  two-tone palette derived from the theme accent and builds multi-size
+  (24/32/48) Xcursor files, cached per theme and exposed via a stable
+  `Aether-Cursor` symlink. Drop a 32x32 `default.png` into
+  `~/.local/share/hypr-rice-personal/cursor-overrides/<theme>/` to use a
+  personal arrow cursor for a theme (kept out of this repo). Note: apps
+  already running when you switch keep their old cursors until restarted
+  (Wayland apps load cursor themes at startup).
 - **`bin/themeswitch`** (Super+T) is a walker menu over the blueprints; it
   records the active theme and mirrors that theme's wallpapers into
   `~/Wallpapers` so the Aether GUI's local browser only shows on-theme ones.

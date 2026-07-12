@@ -28,8 +28,8 @@ PACMAN_DEPS=(
   hyprland hyprlock hypridle hyprpicker hyprshot xdg-desktop-portal-hyprland
   hyprpolkitagent waybar alacritty kitty awww grim swaync
   network-manager-applet thunar pavucontrol pamixer wl-clipboard
-  papirus-icon-theme ttf-jetbrains-mono-nerd fastfetch btop
-  imagemagick curl python acl polkit rofi-wayland git base-devel
+  papirus-icon-theme breeze-cursors xorg-xcursorgen ttf-jetbrains-mono-nerd
+  fastfetch btop imagemagick curl python acl polkit rofi-wayland git base-devel
 )
 AUR_DEPS=(
   aether walker-bin wlogout

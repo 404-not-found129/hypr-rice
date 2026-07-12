@@ -54,6 +54,7 @@ hl.env("NVD_BACKEND", "direct")
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 
 hl.env("XCURSOR_SIZE", "24")
+hl.env("XCURSOR_THEME", "Aether-Cursor")  -- stable symlink, swapped per theme
 hl.env("HYPRCURSOR_SIZE", "24")
 hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
 
@@ -189,6 +190,11 @@ hl.config({
 
 -- Uncomment if the cursor glitches or disappears (older NVIDIA issue):
 -- hl.config({ cursor = { no_hardware_cursors = true } })
+
+-- Custom cursor themes (like EldenRingCursor) are plain Xcursor, not
+-- hyprcursor format. Without this, Hyprland looks for a hyprcursor theme
+-- of that name, finds none, and silently keeps the previous cursor.
+hl.config({ cursor = { enable_hyprcursor = false } })
 
 
 ---------------
