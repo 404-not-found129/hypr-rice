@@ -29,7 +29,8 @@ PACMAN_DEPS=(
   hyprpolkitagent waybar alacritty kitty awww grim swaync
   network-manager-applet thunar pavucontrol pamixer wl-clipboard
   papirus-icon-theme breeze-cursors xorg-xcursorgen ttf-jetbrains-mono-nerd
-  fastfetch btop imagemagick curl python acl polkit rofi-wayland git base-devel
+  fastfetch btop imagemagick curl python python-gobject gtk4 acl polkit
+  rofi-wayland git base-devel
 )
 AUR_DEPS=(
   aether walker-bin wlogout

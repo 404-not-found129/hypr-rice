@@ -258,7 +258,7 @@ hl.bind("CTRL + Print",    hl.dsp.exec_cmd("hyprshot -m output -o ~/Pictures/scr
 
 -- Focus with mainMod + arrows
 -- Theme switcher (Aether blueprints)
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("~/.local/bin/themeswitch"))
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("~/.local/bin/theme-picker"))
 
 -- Wallpaper cycling (Elden Ring collection, themed via Aether)
 hl.bind(mainMod .. " + right", hl.dsp.exec_cmd("~/.local/bin/wallcycle next"))
@@ -345,6 +345,14 @@ hl.window_rule({
     name  = "float-utilities",
     match = { class = "^(org.pulseaudio.pavucontrol|pavucontrol|nm-connection-editor|blueman-manager)$" },
     float = true,
+})
+
+-- Theme picker: centered floating card grid (Super+T)
+hl.window_rule({
+    name  = "theme-picker",
+    match = { class = "^(rice\\.themepicker)$" },
+    float = true,
+    pin   = true,
 })
 
 -- Picture-in-Picture: float + pin

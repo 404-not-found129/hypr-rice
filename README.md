@@ -39,7 +39,7 @@ whatever wallpaper is currently showing.
 
 | Keys | Action |
 |---|---|
-| `Super+T` | Theme switcher menu |
+| `Super+T` | Visual theme picker (wallpaper cards, click / arrows / 1-9) |
 | `Super+←/→` | Previous / next wallpaper *within the current theme* |
 | `Super+Return` | Terminal (alacritty, frosted-glass blur) |
 | `Super+Space` | Launcher (walker) |
@@ -103,9 +103,12 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
   personal arrow cursor for a theme (kept out of this repo). Note: apps
   already running when you switch keep their old cursors until restarted
   (Wayland apps load cursor themes at startup).
-- **`bin/themeswitch`** (Super+T) is a walker menu over the blueprints; it
-  records the active theme and mirrors that theme's wallpapers into
-  `~/Wallpapers` so the Aether GUI's local browser only shows on-theme ones.
+- **`bin/theme-picker`** (Super+T) is a floating GTK4 grid of theme cards --
+  wallpaper preview, palette swatches, active theme highlighted -- styled by
+  the current theme's own colors. Click a card, use arrow keys + Enter, or
+  press 1-9; Esc closes. (`bin/themeswitch` remains as a plain walker-dmenu
+  fallback.) The active theme's wallpapers are mirrored into `~/Wallpapers`
+  so the Aether GUI's local browser only shows on-theme ones.
 - **`bin/wallcycle`** (Super+←/→) cycles the active theme's collection through
   `aether --generate`, so colors re-extract per wallpaper. A shared lock keeps
   the two scripts from ever running two applies at once.
