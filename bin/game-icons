@@ -466,6 +466,24 @@ if not (apps64.exists() and any(apps64.iterdir())):
 
     subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(out)], capture_output=True)
 
+# Mirror the active theme's icons into hicolor, the universal fallback every
+# toolkit checks regardless of the selected icon theme. Walker/GTK4 in this
+# environment doesn't reliably pick up gtk-icon-theme-name for rendering
+# (confirmed: a direct PyGObject Gtk.IconTheme.lookup_icon() call resolves
+# our custom theme correctly, but walker's own icon widgets still don't) --
+# writing straight into hicolor sidesteps whatever that mismatch is. This
+# runs on every apply (not just first generation) so switching themes
+# actually overwrites the previous theme's icons here too.
+hicolor64 = Path.home() / ".local/share/icons/hicolor/64x64/apps"
+hicolor128 = Path.home() / ".local/share/icons/hicolor/128x128/apps"
+hicolor64.mkdir(parents=True, exist_ok=True)
+hicolor128.mkdir(parents=True, exist_ok=True)
+for src_dir, dst_dir in ((apps64, hicolor64), (apps128, hicolor128)):
+    for f in src_dir.glob("*.png"):
+        subprocess.run(["cp", str(f), str(dst_dir / f.name)], check=False)
+subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(Path.home() / ".local/share/icons/hicolor")],
+               capture_output=True)
+
 subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", name],
                capture_output=True)
 

@@ -120,6 +120,13 @@ one), make a matching wallpaper folder in
 - **Folder icons stop changing color** — a `papirus-icon-theme` package update
   reset the permissions. Re-run:
   `sudo setfacl -R -m u:$USER:rwX /usr/share/icons/Papirus*`
+- **App icons in the launcher look default/unbadged** — in this setup, walker's
+  GTK4 icon widgets don't reliably honor `gtk-icon-theme-name` for rendering
+  (confirmed with a direct `Gtk.IconTheme.lookup_icon()` call, which resolves our
+  theme correctly even when walker's own icons don't). `game-icons` works around
+  this by also mirroring every generated icon straight into
+  `~/.local/share/icons/hicolor/{64x64,128x128}/apps/` -- the universal fallback
+  every toolkit checks regardless of the active theme setting -- on every apply.
 - **Wallpaper didn't change with the theme** — the wallpaper daemon may not be
   running; check `pgrep awww-daemon`, and note Hyprland autostarts it at login.
 - **`hyprctl dispatch` errors about Lua** — with the Lua config plugin,
