@@ -3,12 +3,14 @@
 A Hyprland rice with **one-click switchable game themes**. Pick a theme and
 *everything* follows: wallpaper, window borders, terminal colors, waybar
 (colors *and* icons), lock screen, notification center, your folder icon tint, and even the app icons in the launcher --
-each theme draws its own badge frame (an Elden Ring rune-seal, a Fallout
-Pip-Boy bezel with scanlines, a Cyberpunk chamfered chip, a Tokyo Night
-skyline-under-a-crescent-moon, ...) -- gradient-shaded, supersampled for
-crisp edges, with a soft drop shadow -- and composites every app's real,
-full-color icon on top at both 64px and 128px, like a proper icon pack
-rather than a tint.
+each theme draws its own badge frame (an Elden Ring rune-seal with a
+branch sprig, a Fallout Pip-Boy bezel with the radiation trefoil, a
+God of War plate with an axe-head emblem, a Cyberpunk chamfered chip,
+...) -- gradient-shaded, supersampled for crisp edges, with a soft drop
+shadow -- and composites every app's real, full-color icon on top at
+both 64px and 128px. All original artwork: no ripped game assets, just
+generic shapes (an axe, a branch, the public radiation symbol) evocative
+of each game without copying anyone's specific art.
 
 ![demo](demo.gif)
 
