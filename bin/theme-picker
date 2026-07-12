@@ -6,21 +6,26 @@ palette swatches -- styled with the ACTIVE theme's colors. Click a card (or
 use arrows + Enter, or keys 1-9) to apply that theme through the same
 locked pipeline the CLI uses. Esc closes. An extra card re-extracts colors
 from the current wallpaper ("auto" mode).
+
+Fast startup, two tricks:
+  * runs as a resident service (`theme-picker --service`, autostarted by
+    Hyprland). Later invocations just activate the running instance over
+    D-Bus, so the window appears instantly instead of paying Python+GTK
+    import cost every time.
+  * wallpaper previews come from small cached thumbnails
+    (~/.cache/hypr-rice-thumbs), not the full 4K originals.
 """
+import hashlib
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-import gi
-gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gdk, GLib  # noqa: E402
-
 HOME = Path.home()
 BLUEPRINTS = HOME / ".config/aether/blueprints"
 STATE = HOME / ".config/aether/current-theme"
-COLLECTIONS = HOME / "Pictures/wallpapers/collections"
+THUMBS = HOME / ".cache/hypr-rice-thumbs"
 
 ICONS = {
     "elden-ring": "\U000f0787",
@@ -32,31 +37,6 @@ ICONS = {
     "gruvbox": "\U000f0176",
     "catppuccin-mocha": "\U000f011b",
 }
-
-current = STATE.read_text().strip() if STATE.exists() else ""
-
-# active theme's palette for styling the picker itself
-toml = (HOME / ".config/aether/theme/colors.toml").read_text()
-pal = {m.group(1): m.group(2) for m in re.finditer(r'^(\w+)\s*=\s*"([^"]*)"', toml, re.M)}
-BG = pal.get("background", "#111")
-FG = pal.get("foreground", "#ddd")
-ACCENT = pal.get("accent", "#d4a017")
-MUTED = pal.get("muted", "#555")
-
-
-def load_themes():
-    themes = []
-    for f in sorted(BLUEPRINTS.glob("*.json")):
-        try:
-            bp = json.loads(f.read_text())
-        except Exception:
-            continue
-        name = bp.get("name", f.stem)
-        wall = bp.get("palette", {}).get("wallpaper", "")
-        colors = bp.get("palette", {}).get("colors", [])[:8]
-        accent = bp.get("palette", {}).get("extendedColors", {}).get("accent", "#888")
-        themes.append({"name": name, "wallpaper": wall, "colors": colors, "accent": accent})
-    return themes
 
 
 def apply_theme(name):
@@ -71,79 +51,130 @@ def apply_theme(name):
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-CSS = f"""
-window {{
-    background: alpha({BG}, 0.88);
-}}
-.title {{
-    color: {FG};
-    font-family: "JetBrainsMono Nerd Font";
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: 6px;
-}}
-.subtitle {{
-    color: alpha({FG}, 0.45);
-    font-family: "JetBrainsMono Nerd Font";
-    font-size: 11px;
-}}
-button.card {{
-    background: alpha({FG}, 0.05);
-    border: 2px solid alpha({MUTED}, 0.55);
-    border-radius: 16px;
-    padding: 0;
-    transition: all 150ms ease;
-}}
-button.card:hover, button.card:focus {{
-    border-color: {ACCENT};
-    background: alpha({ACCENT}, 0.12);
-}}
-button.card.current {{
-    border-color: {ACCENT};
-    box-shadow: 0 0 14px alpha({ACCENT}, 0.45);
-}}
-.thumbframe {{
-    border-radius: 12px;
-}}
-.cardname {{
-    color: {FG};
-    font-family: "JetBrainsMono Nerd Font";
-    font-size: 13px;
-    font-weight: 700;
-}}
-.cardicon {{
-    color: {ACCENT};
-    font-family: "JetBrainsMono Nerd Font";
-    font-size: 15px;
-}}
-.currenttag {{
-    color: {ACCENT};
-    font-family: "JetBrainsMono Nerd Font";
-    font-size: 10px;
-}}
-.swatch {{
-    border-radius: 4px;
-}}
+if len(sys.argv) > 1 and sys.argv[1] == "--apply":
+    apply_theme(sys.argv[2])
+    sys.exit(0)
+
+import gi  # noqa: E402
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk, Gdk, Gio, GLib  # noqa: E402
+
+
+def thumb_for(wall):
+    """Small cover-cropped thumbnail, cached by path+mtime."""
+    src = Path(wall)
+    if not src.exists():
+        return None
+    THUMBS.mkdir(parents=True, exist_ok=True)
+    key = hashlib.md5(f"{src}:{src.stat().st_mtime_ns}".encode()).hexdigest()
+    t = THUMBS / f"{key}.jpg"
+    if not t.exists():
+        subprocess.run(["magick", str(src), "-resize", "600x300^",
+                        "-gravity", "center", "-extent", "600x300",
+                        "-quality", "82", str(t)], capture_output=True)
+    return t if t.exists() else src
+
+
+def load_themes():
+    themes = []
+    for f in sorted(BLUEPRINTS.glob("*.json")):
+        try:
+            bp = json.loads(f.read_text())
+        except Exception:
+            continue
+        themes.append({
+            "name": bp.get("name", f.stem),
+            "wallpaper": bp.get("palette", {}).get("wallpaper", ""),
+            "colors": bp.get("palette", {}).get("colors", [])[:8],
+        })
+    themes.append({"name": "__auto__",
+                   "wallpaper": str(HOME / "Pictures/wallpapers/wall.png"),
+                   "colors": []})
+    return themes
+
+
+def palette():
+    toml = (HOME / ".config/aether/theme/colors.toml").read_text()
+    pal = {m.group(1): m.group(2) for m in re.finditer(r'^(\w+)\s*=\s*"([^"]*)"', toml, re.M)}
+    return (pal.get("background", "#111"), pal.get("foreground", "#ddd"),
+            pal.get("accent", "#d4a017"), pal.get("muted", "#555"))
+
+
+def build_css(bg, fg, accent, muted, swatches):
+    sw_rules = "\n".join(f".sw-{c.lstrip('#')} {{ background: {c}; }}" for c in swatches)
+    return f"""
+window {{ background: alpha({bg}, 0.88); }}
+.title {{ color: {fg}; font-family: "JetBrainsMono Nerd Font"; font-size: 20px;
+          font-weight: 800; letter-spacing: 6px; }}
+.subtitle {{ color: alpha({fg}, 0.45); font-family: "JetBrainsMono Nerd Font"; font-size: 11px; }}
+button.card {{ background: alpha({fg}, 0.05); border: 2px solid alpha({muted}, 0.55);
+               border-radius: 16px; padding: 0; transition: all 150ms ease; }}
+button.card:hover, button.card:focus {{ border-color: {accent}; background: alpha({accent}, 0.12); }}
+button.card.current {{ border-color: {accent}; box-shadow: 0 0 14px alpha({accent}, 0.45); }}
+.thumbframe {{ border-radius: 12px; }}
+.cardname {{ color: {fg}; font-family: "JetBrainsMono Nerd Font"; font-size: 13px; font-weight: 700; }}
+.cardicon {{ color: {accent}; font-family: "JetBrainsMono Nerd Font"; font-size: 15px; }}
+.currenttag {{ color: {accent}; font-family: "JetBrainsMono Nerd Font"; font-size: 10px; }}
+.swatch {{ border-radius: 4px; }}
+{sw_rules}
 """
 
 
 class Picker(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id="rice.themepicker")
+        super().__init__(application_id="rice.themepicker",
+                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.win = None
+        self.provider = None
+
+    def do_command_line(self, cl):
+        args = cl.get_arguments()[1:]
+        if "--service" in args:
+            if not hasattr(self, "_held"):
+                self._held = True
+                self.hold()
+                GLib.idle_add(self.warm_thumbs)
+        else:
+            self.activate()
+        return 0
+
+    def warm_thumbs(self):
+        for t in load_themes():
+            thumb_for(t["wallpaper"])
+        return False
 
     def do_activate(self):
+        # toggle: pressing Super+T while open closes it
+        if self.win is not None and self.win.get_visible():
+            self.win.destroy()
+            self.win = None
+            return
+        self.build_window()
+
+    def build_window(self):
+        if self.win is not None:
+            self.win.destroy()
+            self.win = None
+
+        current = STATE.read_text().strip() if STATE.exists() else ""
+        bg, fg, accent, muted = palette()
+        themes = load_themes()
+
+        all_swatches = {c for t in themes for c in t["colors"]}
+        css = build_css(bg, fg, accent, muted, all_swatches)
+        if self.provider is None:
+            self.provider = Gtk.CssProvider()
+            Gtk.StyleContext.add_provider_for_display(
+                Gdk.Display.get_default(), self.provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.provider.load_from_data(css.encode())
+
         win = Gtk.ApplicationWindow(application=self, title="Theme Picker")
         win.set_default_size(1060, 640)
-
-        prov = Gtk.CssProvider()
-        prov.load_from_data(CSS.encode())
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), prov,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.win = win
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8,
                        margin_top=26, margin_bottom=22, margin_start=30, margin_end=30)
-
         title = Gtk.Label(label="SELECT  THEME")
         title.add_css_class("title")
         root.append(title)
@@ -154,26 +185,18 @@ class Picker(Gtk.Application):
 
         grid = Gtk.FlowBox(max_children_per_line=3, min_children_per_line=3,
                            selection_mode=Gtk.SelectionMode.NONE,
-                           row_spacing=14, column_spacing=14,
-                           homogeneous=True)
-
-        themes = load_themes()
-        themes.append({"name": "__auto__", "wallpaper": str(HOME / "Pictures/wallpapers/wall.png"),
-                       "colors": [], "accent": ACCENT})
-
-        for i, t in enumerate(themes):
-            grid.append(self.make_card(t, i))
-
+                           row_spacing=14, column_spacing=14, homogeneous=True)
+        for t in themes:
+            grid.append(self.make_card(t, current))
         root.append(grid)
         win.set_child(root)
 
         keys = Gtk.EventControllerKey()
         keys.connect("key-pressed", self.on_key, themes)
         win.add_controller(keys)
-
         win.present()
 
-    def make_card(self, t, index):
+    def make_card(self, t, current):
         name = t["name"]
         is_auto = name == "__auto__"
         shown = "auto (from wallpaper)" if is_auto else name
@@ -186,13 +209,13 @@ class Picker(Gtk.Application):
         v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6,
                     margin_top=8, margin_bottom=10, margin_start=8, margin_end=8)
 
-        wall = t["wallpaper"]
         pic = Gtk.Picture()
         pic.set_size_request(300, 150)
         pic.add_css_class("thumbframe")
         pic.set_content_fit(Gtk.ContentFit.COVER)
-        if wall and Path(wall).exists():
-            pic.set_filename(wall)
+        th = thumb_for(t["wallpaper"])
+        if th:
+            pic.set_filename(str(th))
         v.append(pic)
 
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -216,26 +239,25 @@ class Picker(Gtk.Application):
                 d = Gtk.Box()
                 d.set_size_request(18, 6)
                 d.add_css_class("swatch")
-                p = Gtk.CssProvider()
-                p.load_from_data(f".swatch-{index}-{c.lstrip('#')} {{ background: {c}; }}".encode())
-                d.add_css_class(f"swatch-{index}-{c.lstrip('#')}")
-                Gtk.StyleContext.add_provider_for_display(
-                    Gdk.Display.get_default(), p,
-                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+                d.add_css_class(f"sw-{c.lstrip('#')}")
                 sw.append(d)
             v.append(sw)
 
         btn.set_child(v)
-        btn.connect("clicked", lambda *_: self.choose(t["name"]))
+        btn.connect("clicked", lambda *_: self.choose(name))
         return btn
 
     def choose(self, name):
         apply_theme(name)
-        self.quit()
+        if self.win:
+            self.win.destroy()
+            self.win = None
 
     def on_key(self, ctrl, keyval, keycode, state, themes):
         if keyval == Gdk.KEY_Escape:
-            self.quit()
+            if self.win:
+                self.win.destroy()
+                self.win = None
             return True
         if Gdk.KEY_1 <= keyval <= Gdk.KEY_9:
             idx = keyval - Gdk.KEY_1
@@ -245,8 +267,4 @@ class Picker(Gtk.Application):
         return False
 
 
-if len(sys.argv) > 1 and sys.argv[1] == "--apply":
-    apply_theme(sys.argv[2])
-    sys.exit(0)
-
-Picker().run(None)
+Picker().run(sys.argv)

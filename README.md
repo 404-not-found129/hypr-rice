@@ -106,7 +106,10 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
 - **`bin/theme-picker`** (Super+T) is a floating GTK4 grid of theme cards --
   wallpaper preview, palette swatches, active theme highlighted -- styled by
   the current theme's own colors. Click a card, use arrow keys + Enter, or
-  press 1-9; Esc closes. (`bin/themeswitch` remains as a plain walker-dmenu
+  press 1-9; Esc closes; Super+T again toggles. It runs as a resident
+  service (autostarted by Hyprland) with cached wallpaper thumbnails, so
+  the window appears in ~0.3s instead of paying GTK startup + 4K image
+  decode on every open. (`bin/themeswitch` remains as a plain walker-dmenu
   fallback.) The active theme's wallpapers are mirrored into `~/Wallpapers`
   so the Aether GUI's local browser only shows on-theme ones.
 - **`bin/wallcycle`** (Super+←/→) cycles the active theme's collection through
