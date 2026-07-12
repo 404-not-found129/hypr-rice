@@ -244,14 +244,14 @@ def heart(cx, cy, s, color):
 # its filename, so the launcher shows a real VARIETY of marks per theme
 # rather than the same single flourish repeated on every row.
 EMBLEM_POOLS = {
-    "elden-ring":      [(sprig, "border", 9), (sword, "accent2", 9), (shield, "border", 8), (coin, "accent2", 7)],
-    "ashen-flame":     [(sprig, "border", 9), (sword, "accent2", 9), (flask, "border", 8), (coin, "accent2", 7)],
-    "god-of-war":      [(axe_head, "accent2", 9), (shield, "border", 8), (lambda cx,cy,s,c: gear(cx,cy,s,c,6), "muted", 8), (coin, "accent2", 7)],
-    "fallout":         [(lambda cx,cy,s,c: trefoil(cx,cy,s,c,0.6), "border", 9), (lambda cx,cy,s,c: gear(cx,cy,s,c,8), "border", 8), (chest, "accent2", 8), (flask, "border", 8)],
-    "cyberpunk-2077":  [(lambda cx,cy,s,c: aperture(cx,cy,s,c,0.6), "accent2", 9), (lambda cx,cy,s,c: gear(cx,cy,s,c,10), "accent2", 8), (coin, "border", 7), (chest, "accent2", 8)],
-    "tokyo-night":     [(lambda cx,cy,s,c: torii(cx,cy,s*2.6,s*1.8,c), "muted", 9), (star, "accent2", 7), (coin, "accent2", 7), (lambda cx,cy,s,c: gear(cx,cy,s,c,6), "muted", 8)],
-    "gruvbox":         [(terminal_prompt, "border", 9), (lambda cx,cy,s,c: gear(cx,cy,s,c,8), "border", 8), (coin, "border", 7), (star, "flavor_warm", 7)],
-    "catppuccin-mocha": [(paw_print, "flavor_pink", 8), (heart, "flavor_pink", 8), (star, "accent2", 7), (coin, "flavor_pink", 7)],
+    "elden-ring":      [(sprig, "border", 15), (sword, "accent2", 15), (shield, "border", 13), (coin, "accent2", 12)],
+    "ashen-flame":     [(sprig, "border", 15), (sword, "accent2", 15), (flask, "border", 13), (coin, "accent2", 12)],
+    "god-of-war":      [(axe_head, "accent2", 15), (shield, "border", 13), (lambda cx,cy,s,c: gear(cx,cy,s,c,6), "muted", 13), (coin, "accent2", 12)],
+    "fallout":         [(lambda cx,cy,s,c: trefoil(cx,cy,s,c,0.75), "border", 15), (lambda cx,cy,s,c: gear(cx,cy,s,c,8), "border", 13), (chest, "accent2", 13), (flask, "border", 13)],
+    "cyberpunk-2077":  [(lambda cx,cy,s,c: aperture(cx,cy,s,c,0.75), "accent2", 15), (lambda cx,cy,s,c: gear(cx,cy,s,c,10), "accent2", 13), (coin, "border", 12), (chest, "accent2", 13)],
+    "tokyo-night":     [(lambda cx,cy,s,c: torii(cx,cy,s*2.6,s*1.8,c), "muted", 15), (star, "accent2", 12), (coin, "accent2", 12), (lambda cx,cy,s,c: gear(cx,cy,s,c,6), "muted", 13)],
+    "gruvbox":         [(terminal_prompt, "border", 15), (lambda cx,cy,s,c: gear(cx,cy,s,c,8), "border", 13), (coin, "border", 12), (star, "flavor_warm", 12)],
+    "catppuccin-mocha": [(paw_print, "flavor_pink", 13), (heart, "flavor_pink", 13), (star, "accent2", 12), (coin, "flavor_pink", 12)],
 }
 
 def pick_emblem_svg(theme, icon_name):
@@ -261,7 +261,7 @@ def pick_emblem_svg(theme, icon_name):
     pool = EMBLEM_POOLS.get(theme, EMBLEM_POOLS["elden-ring"])
     idx = int(hashlib.md5(icon_name.encode()).hexdigest(), 16) % len(pool)
     fn, color_key, size = pool[idx]
-    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">{fn(64, 110, size, color_map[color_key])}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">{fn(64, 105, size, color_map[color_key])}</svg>'
 
 
 def decorations(theme):
@@ -408,7 +408,7 @@ if not (apps64.exists() and any(apps64.iterdir())):
                 return pm
         return None
 
-    GLYPH = round(76 / 128 * WORK)
+    GLYPH = round(66 / 128 * WORK)
 
     def render(icon):
         import tempfile
