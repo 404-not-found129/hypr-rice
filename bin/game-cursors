@@ -39,36 +39,52 @@ BUILD_ONLY = len(sys.argv) > 2 and sys.argv[1] == "--build"
 if BUILD_ONLY:
     theme = sys.argv[2]
     bp_file = HOME / ".config/aether/blueprints" / f"{theme}.json"
-    accent = "d4a017"
+    accent, cursor_hl = "d4a017", "f0c94a"
     if bp_file.exists():
         bp = json.loads(bp_file.read_text())
-        accent = bp.get("palette", {}).get("extendedColors", {}).get(
-            "accent", "#d4a017").lstrip("#")
+        ext = bp.get("palette", {}).get("extendedColors", {})
+        accent = ext.get("accent", "#d4a017").lstrip("#")
+        cursor_hl = ext.get("cursor", "#" + accent).lstrip("#")
 else:
     state = HOME / ".config/aether/current-theme"
     theme = state.read_text().strip() if state.exists() else "default"
     toml = (HOME / ".config/aether/theme/colors.toml").read_text()
     m = re.search(r'^accent\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)
     accent = m.group(1) if m else "d4a017"
+    m2 = re.search(r'^cursor\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)
+    cursor_hl = m2.group(1) if m2 else accent
 
 # Hand-tuned palettes where the auto-derivation isn't ideal; everything else
-# derives fill/outline from the accent hue.
+# derives fill/outline from the theme's accent + cursor-highlight colors.
 FIXED = {
     "elden-ring": ("#61553d", "#a59879"),   # sampled from the custom arrow
     "ashen-flame": ("#61553d", "#a59879"),
 }
 
 
-def derive(accent_hex):
-    r, g, b = (int(accent_hex[i:i + 2], 16) / 255 for i in (0, 2, 4))
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
+def derive(accent_hex, highlight_hex):
+    """Fill from the theme's accent hue, outline from its cursor/highlight
+    hue -- two DIFFERENT anchor colors from the palette, not one color split
+    into two lightnesses. Themes whose accent and highlight share a hue
+    family (gruvbox) still get a coherent monotone; themes where they
+    diverge (god-of-war gold+ice-blue, cyberpunk yellow+cyan) get real
+    two-tone contrast instead of collapsing into the same generic look."""
+    def hls(hexcol):
+        r, g, b = (int(hexcol[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        return colorsys.rgb_to_hls(r, g, b)
+
     def hx(hh, ll, ss):
         rr, gg, bb = colorsys.hls_to_rgb(hh, ll, ss)
         return f"#{int(rr*255):02x}{int(gg*255):02x}{int(bb*255):02x}"
-    return hx(h, 0.28, min(1, s * 0.6)), hx(h, 0.62, min(1, s * 0.45))
+
+    ah, al, asat = hls(accent_hex)
+    hh, hl, hsat = hls(highlight_hex)
+    fill = hx(ah, 0.30, min(1, max(asat, 0.4) * 0.8))
+    outline = hx(hh, 0.74, min(1, max(hsat, 0.3) * 0.7))
+    return fill, outline
 
 
-FILL, OUTLINE = FIXED.get(theme, derive(accent))
+FILL, OUTLINE = FIXED.get(theme, derive(accent, cursor_hl))
 
 name = f"Aether-Cursor-{theme}"
 out = ICONS / name
