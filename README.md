@@ -100,9 +100,11 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
   (24/32/48) Xcursor files, cached per theme and exposed via a stable
   `Aether-Cursor` symlink. Drop a 32x32 `default.png` into
   `~/.local/share/hypr-rice-personal/cursor-overrides/<theme>/` to use a
-  personal arrow cursor for a theme (kept out of this repo). Note: apps
-  already running when you switch keep their old cursors until restarted
-  (Wayland apps load cursor themes at startup).
+  personal arrow cursor for a theme (kept out of this repo). All eight
+  sets are pre-built at install time (`game-cursors --build <theme>`), so
+  switching never waits on generation. Note: apps already running when
+  you switch keep their old cursors until restarted (Wayland apps load
+  cursor themes at startup).
 - **`bin/theme-picker`** (Super+T) is a floating GTK4 grid of theme cards --
   wallpaper preview, palette swatches, active theme highlighted -- styled by
   the current theme's own colors. Click a card, use arrow keys + Enter, or

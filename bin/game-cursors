@@ -30,12 +30,26 @@ ICONS = HOME / ".local/share/icons"
 OVERRIDES = HOME / ".local/share/hypr-rice-personal/cursor-overrides"
 SIZES = (24, 32, 48)
 
-state = HOME / ".config/aether/current-theme"
-theme = state.read_text().strip() if state.exists() else "default"
+import sys
 
-toml = (HOME / ".config/aether/theme/colors.toml").read_text()
-m = re.search(r'^accent\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)
-accent = m.group(1) if m else "d4a017"
+# --build <theme>: build that theme's set (accent read from its blueprint)
+# without activating it -- used to pre-generate all themes at install time.
+BUILD_ONLY = len(sys.argv) > 2 and sys.argv[1] == "--build"
+
+if BUILD_ONLY:
+    theme = sys.argv[2]
+    bp_file = HOME / ".config/aether/blueprints" / f"{theme}.json"
+    accent = "d4a017"
+    if bp_file.exists():
+        bp = json.loads(bp_file.read_text())
+        accent = bp.get("palette", {}).get("extendedColors", {}).get(
+            "accent", "#d4a017").lstrip("#")
+else:
+    state = HOME / ".config/aether/current-theme"
+    theme = state.read_text().strip() if state.exists() else "default"
+    toml = (HOME / ".config/aether/theme/colors.toml").read_text()
+    m = re.search(r'^accent\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)
+    accent = m.group(1) if m else "d4a017"
 
 # Hand-tuned palettes where the auto-derivation isn't ideal; everything else
 # derives fill/outline from the accent hue.
@@ -156,6 +170,9 @@ if not (cursors.exists() and any(cursors.iterdir())):
     print(f"{name}: built {built} shapes")
 else:
     print(f"{name}: cached")
+
+if BUILD_ONLY:
+    sys.exit(0)
 
 # --- activate under the stable name ---
 stable = ICONS / "Aether-Cursor"

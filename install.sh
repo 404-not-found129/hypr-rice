@@ -154,6 +154,15 @@ fi
 
 "$HOME/.local/bin/waybar-theme-icons" >/dev/null 2>&1 || true
 
+# Pre-build the themed cursor set for every theme so switching never waits
+# on first-time generation (each set is recolored Breeze, ~1s per theme).
+info "Pre-building themed cursor sets..."
+for bp in "$HOME/.config/aether/blueprints/"*.json; do
+  t=$(basename "$bp" .json)
+  python3 "$HOME/.local/bin/game-cursors" --build "$t" >/dev/null 2>&1 \
+    || warn "cursor set for $t failed to build (will retry on first switch)"
+done
+
 # fastfetch in new terminals
 if ! grep -q "fastfetch" "$HOME/.bashrc" 2>/dev/null; then
   cat "$REPO/extras/bashrc-snippet.sh" >> "$HOME/.bashrc"
