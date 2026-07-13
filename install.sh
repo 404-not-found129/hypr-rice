@@ -29,7 +29,7 @@ PACMAN_DEPS=(
   hyprpolkitagent waybar alacritty kitty awww grim swaync
   network-manager-applet thunar pavucontrol pamixer wl-clipboard
   papirus-icon-theme breeze-cursors xorg-xcursorgen ttf-jetbrains-mono-nerd
-  fastfetch btop imagemagick curl python python-gobject gtk4 acl polkit
+  fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
   rofi-wayland git base-devel
 )
 AUR_DEPS=(
@@ -163,10 +163,13 @@ for bp in "$HOME/.config/aether/blueprints/"*.json; do
     || warn "cursor set for $t failed to build (will retry on first switch)"
 done
 
-# fastfetch in new terminals
-if ! grep -q "fastfetch" "$HOME/.bashrc" 2>/dev/null; then
+# eza (ls) colors for the default theme, so the first shell has them
+python3 "$HOME/.local/bin/eza-theme" >/dev/null 2>&1 || true
+
+# eza aliases + fastfetch in new terminals
+if ! grep -q "eza (modern ls)" "$HOME/.bashrc" 2>/dev/null; then
   cat "$REPO/extras/bashrc-snippet.sh" >> "$HOME/.bashrc"
-  info "Added fastfetch snippet to ~/.bashrc"
+  info "Added eza/fastfetch snippet to ~/.bashrc"
 fi
 
 echo

@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Write an EZA_COLORS string derived from the active Aether theme accent.
+
+eza reads EZA_COLORS (an LS_COLORS-style string with eza-specific slots) from
+the environment. We generate one that accents the size, date, owner and
+directory columns with the theme's accent/cursor colors, and source it from
+~/.config/eza/colors.sh in .bashrc. Called from the Aether post-apply hook.
+"""
+import re
+from pathlib import Path
+
+HOME = Path.home()
+
+
+def rgb(hexcol, fallback):
+    m = re.match(r"#?([0-9a-fA-F]{6})$", hexcol or "")
+    h = m.group(1) if m else fallback
+    return f"38;2;{int(h[0:2],16)};{int(h[2:4],16)};{int(h[4:6],16)}"
+
+
+toml_path = HOME / ".config/aether/theme/colors.toml"
+cols = {}
+if toml_path.exists():
+    for mt in re.finditer(r'^(\w+)\s*=\s*"([^"]*)"', toml_path.read_text(), re.M):
+        cols[mt.group(1)] = mt.group(2)
+
+accent = rgb(cols.get("accent"), "d4a017")
+cursor = rgb(cols.get("cursor"), "f0c94a")
+muted = rgb(cols.get("muted"), "888888")
+green = rgb(cols.get("green"), "a6e3a1")
+red = rgb(cols.get("red"), "f38ba8")
+
+# eza color slots: ur/uw/ux user perms, sn size number, sb size unit,
+# da date, uu owner, di directory, gm git-modified, ga git-added
+parts = {
+    "di": f"{accent};1",   # directories
+    "ur": accent, "uw": red, "ux": green, "ue": green,
+    "sn": cursor, "sb": muted,   # size number / unit
+    "da": muted,               # date
+    "uu": accent,              # your own username
+    "gm": cursor, "ga": green, "gd": red,  # git modified/added/deleted
+    "xx": muted,               # punctuation / dashes
+}
+eza_colors = ":".join(f"{k}={v}" for k, v in parts.items())
+
+out = HOME / ".config/eza"
+out.mkdir(parents=True, exist_ok=True)
+(out / "colors.sh").write_text(f'export EZA_COLORS="{eza_colors}"\n')
+print("eza colors updated")

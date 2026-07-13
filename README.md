@@ -119,6 +119,10 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
   the two scripts from ever running two applies at once.
 - **`bin/waybar-theme-icons`** patches waybar's config with each theme's icon
   set (all glyphs verified against JetBrainsMono Nerd Font).
+- **`bin/eza-theme`** writes an `EZA_COLORS` string from the theme accent to
+  `~/.config/eza/colors.sh` (sourced by `.bashrc`), so `ls`/`ll`/`la` (aliased
+  to [eza](https://github.com/eza-community/eza) with icons + git columns)
+  tint their size/date/owner/dir columns to match the active theme.
 
 ### Add wallpapers to a theme
 

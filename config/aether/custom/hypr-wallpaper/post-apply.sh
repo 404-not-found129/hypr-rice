@@ -10,3 +10,4 @@ pkill -SIGUSR2 waybar   # reload config + style with the new palette
 "$HOME/.local/bin/papirus-accent" >/dev/null 2>&1   # tint folder icons to the accent
 "$HOME/.local/bin/game-icons" >/dev/null 2>&1       # per-theme badged app icon set
 "$HOME/.local/bin/game-cursors" >/dev/null 2>&1     # per-theme recolored cursor set
+"$HOME/.local/bin/eza-theme" >/dev/null 2>&1        # per-theme eza (ls) colors
