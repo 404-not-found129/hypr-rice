@@ -54,11 +54,15 @@ else:
     m2 = re.search(r'^cursor\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)
     cursor_hl = m2.group(1) if m2 else accent
 
-# Hand-tuned palettes where the auto-derivation isn't ideal; everything else
-# derives fill/outline from the theme's accent + cursor-highlight colors.
+# Hand-tuned palettes where the auto-derivation isn't ideal. Elden Ring,
+# God of War and Gruvbox all have gold-family accents, so accent-derived
+# cursors collapse into the same gold look -- these three commit to a
+# distinct SIGNATURE color each so they read as different themes.
 FIXED = {
-    "elden-ring": ("#61553d", "#a59879"),   # sampled from the custom arrow
+    "elden-ring":  ("#61553d", "#a59879"),   # sampled from the custom arrow
     "ashen-flame": ("#61553d", "#a59879"),
+    "god-of-war":  ("#2e4f63", "#a3d0e4"),    # Norse frost: steel-blue + ice
+    "gruvbox":     ("#b8501a", "#ebdbb2"),    # burnt orange + cream (retro warm)
 }
 
 
