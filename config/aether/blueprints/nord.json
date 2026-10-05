@@ -1,0 +1,35 @@
+{
+  "name": "nord",
+  "timestamp": 1783400000000,
+  "palette": {
+    "colors": [
+      "#2e3440",
+      "#bf616a",
+      "#a3be8c",
+      "#ebcb8b",
+      "#81a1c1",
+      "#b48ead",
+      "#88c0d0",
+      "#e5e9f0",
+      "#4c566a",
+      "#bf616a",
+      "#a3be8c",
+      "#ebcb8b",
+      "#81a1c1",
+      "#b48ead",
+      "#8fbcbb",
+      "#eceff4"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/nord/wallhaven-j3qq15.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#88c0d0",
+      "cursor": "#d8dee9",
+      "selection_foreground": "#2e3440",
+      "selection_background": "#88c0d0"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

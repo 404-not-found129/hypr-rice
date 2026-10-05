@@ -1,0 +1,16 @@
+# theme -> group, used by the theme picker sections and `themectl random <group>`.
+# Themes not listed here (including ones you add yourself) count as "aesthetic".
+elden-ring        games
+ashen-flame       games
+god-of-war        games
+fallout           games
+cyberpunk-2077    games
+tokyo-night       aesthetic
+gruvbox           aesthetic
+catppuccin-mocha  aesthetic
+catppuccin-latte  aesthetic
+nord              aesthetic
+rose-pine         aesthetic
+everforest        aesthetic
+kanagawa          aesthetic
+dracula           aesthetic

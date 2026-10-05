@@ -1,0 +1,109 @@
+#!/bin/bash
+# themectl -- one command-line entry point for every theme action. The
+# picker (Super+T), the keybinds and the day/night schedule all go through
+# here, so they share one lock and one way of recording the active theme.
+#
+#   themectl list [games|aesthetic]   themes, one per line (* = active)
+#   themectl current                  active theme name
+#   themectl set <theme>              apply a theme
+#   themectl auto                     re-extract colors from the current wallpaper
+#   themectl random [games|aesthetic] apply a random theme (never the active one)
+#   themectl next | prev              step through themes alphabetically
+#   themectl category <theme>         print games / aesthetic
+
+set -uo pipefail
+
+STATE="$HOME/.config/aether/current-theme"
+BLUEPRINTS="$HOME/.config/aether/blueprints"
+CATEGORIES="$HOME/.config/hypr-rice/categories"
+COLLECTIONS="$HOME/Pictures/wallpapers/collections"
+
+current() { cat "$STATE" 2>/dev/null; }
+
+themes() {
+    local f
+    for f in "$BLUEPRINTS"/*.json; do
+        [ -e "$f" ] && basename "$f" .json
+    done | sort
+}
+
+# Themes not listed in the categories file count as "aesthetic".
+category() {
+    local c
+    c=$(awk -v t="$1" '$1 == t { print $2; exit }' "$CATEGORIES" 2>/dev/null)
+    echo "${c:-aesthetic}"
+}
+
+themes_in() { # themes_in [group]
+    local t
+    while read -r t; do
+        if [ -z "${1:-}" ] || [ "$(category "$t")" = "$1" ]; then
+            echo "$t"
+        fi
+    done < <(themes)
+}
+
+lock() {
+    # Shared lock with wallcycle/theme-picker: never run two aether applies at
+    # once (that mixes wallpapers). Wait for an in-flight apply to finish.
+    exec 9>/tmp/aether-apply.lock
+    flock -w 60 9 || { echo "themectl: another apply is still running" >&2; exit 1; }
+}
+
+apply() {
+    local name=$1
+    [ -f "$BLUEPRINTS/$name.json" ] || { echo "themectl: no such theme: $name" >&2; exit 1; }
+    lock
+    # Record the theme BEFORE applying: the post-apply hook reads it mid-apply
+    # (waybar icons, folder tint, app icons), and wallcycle scopes to it.
+    printf '%s' "$name" > "$STATE"
+    aether --apply-blueprint "$name"
+
+    # The Aether GUI's local-wallpaper browser scans ~/Wallpapers: fill it
+    # with links to this theme's collection so it only shows these.
+    mkdir -p "$HOME/Wallpapers"
+    find "$HOME/Wallpapers" -maxdepth 1 -type l -delete 2>/dev/null
+    ln -sf "$COLLECTIONS/$name"/* "$HOME/Wallpapers/" 2>/dev/null
+    command -v notify-send >/dev/null &&
+        notify-send -a hypr-rice -t 2500 "Theme" "$name" 2>/dev/null
+    return 0
+}
+
+step() { # step +1|-1
+    local list cur i n
+    mapfile -t list < <(themes)
+    n=${#list[@]}
+    (( n )) || exit 1
+    cur=$(current)
+    i=-1
+    for j in "${!list[@]}"; do [ "${list[$j]}" = "$cur" ] && i=$j; done
+    apply "${list[$(( (i + $1 + n) % n ))]}"
+}
+
+case "${1:-}" in
+    list)
+        cur=$(current)
+        while read -r t; do
+            [ "$t" = "$cur" ] && echo "* $t" || echo "  $t"
+        done < <(themes_in "${2:-}")
+        ;;
+    current)  current; echo ;;
+    category) category "${2:?theme name}" ;;
+    set)      apply "${2:?usage: themectl set <theme>}" ;;
+    auto)
+        lock
+        aether --generate "$(readlink -f "$HOME/Pictures/wallpapers/wall.png")"
+        ;;
+    random)
+        cur=$(current)
+        mapfile -t pool < <(themes_in "${2:-}" | grep -vxF -- "$cur")
+        (( ${#pool[@]} )) || { echo "themectl: nothing to pick from" >&2; exit 1; }
+        apply "${pool[RANDOM % ${#pool[@]}]}"
+        ;;
+    next) step 1 ;;
+    prev) step -1 ;;
+    *)
+        sed -n '2,/^$/s/^# \{0,1\}//p' "$0"
+        exit 1
+        ;;
+esac

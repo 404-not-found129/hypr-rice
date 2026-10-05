@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────
---  Hyprland (Lua config) — Catppuccin Mocha
+--  Hyprland (Lua config) — hypr-rice (colors follow the active Aether theme)
 -- ─────────────────────────────────────────────────────────
 
 ------------------
@@ -29,6 +29,8 @@ local menu        = "walker"
 -------------------
 
 hl.on("hyprland.start", function()
+    -- let systemd user units (theme-schedule.timer) talk to this session
+    hl.exec_cmd("systemctl --user import-environment WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP DISPLAY")
     hl.exec_cmd("waybar")
     hl.exec_cmd("systemctl --user reset-failed swaync xdg-desktop-portal-hyprland 2>/dev/null; systemctl --user start swaync")
     hl.exec_cmd("elephant")
@@ -39,7 +41,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("sleep 1 && wp=$(ls -t ~/.config/aether/theme/backgrounds/* 2>/dev/null | head -n1); [ -n \"$wp\" ] && ln -sf \"$wp\" ~/Pictures/wallpapers/wall.png; awww img ~/Pictures/wallpapers/wall.png --transition-type grow --transition-pos center")
     hl.exec_cmd("nm-applet")
     hl.exec_cmd("hypridle")
-    hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'")
+    hl.exec_cmd("~/.local/bin/color-scheme-sync")  -- light/dark follows the active theme
     -- icon theme is managed per-theme by game-icons (persists via dconf)
 end)
 
@@ -257,13 +259,24 @@ hl.bind("Print",           hl.dsp.exec_cmd("hyprshot -m region -o ~/Pictures/scr
 hl.bind("SHIFT + Print",   hl.dsp.exec_cmd("hyprshot -m window -o ~/Pictures/screenshots"))
 hl.bind("CTRL + Print",    hl.dsp.exec_cmd("hyprshot -m output -o ~/Pictures/screenshots"))
 
--- Focus with mainMod + arrows
--- Theme switcher (Aether blueprints)
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("~/.local/bin/theme-picker"))
+-- Themes (Aether blueprints, see `themectl`)
+hl.bind(mainMod .. " + T",          hl.dsp.exec_cmd("~/.local/bin/theme-picker"))     -- desc: theme picker
+hl.bind(mainMod .. " + SHIFT + T",  hl.dsp.exec_cmd("~/.local/bin/themectl random"))  -- desc: random theme
+hl.bind(mainMod .. " + CTRL + T",   hl.dsp.exec_cmd("~/.local/bin/themectl auto"))    -- desc: theme from current wallpaper
 
--- Wallpaper cycling (Elden Ring collection, themed via Aether)
-hl.bind(mainMod .. " + right", hl.dsp.exec_cmd("~/.local/bin/wallcycle next"))
-hl.bind(mainMod .. " + left",  hl.dsp.exec_cmd("~/.local/bin/wallcycle prev"))
+-- Wallpaper cycling (within the active theme's collection, themed via Aether)
+hl.bind(mainMod .. " + right",     hl.dsp.exec_cmd("~/.local/bin/wallcycle next"))    -- desc: next wallpaper
+hl.bind(mainMod .. " + left",      hl.dsp.exec_cmd("~/.local/bin/wallcycle prev"))    -- desc: previous wallpaper
+hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("~/.local/bin/wallcycle random"))  -- desc: random wallpaper
+
+-- Extras
+hl.bind(mainMod .. " + slash",      hl.dsp.exec_cmd("~/.local/bin/keybinds"))           -- desc: this cheat sheet
+hl.bind(mainMod .. " + N",          hl.dsp.exec_cmd("~/.local/bin/nightlight toggle"))  -- desc: night light
+hl.bind(mainMod .. " + period",     hl.dsp.exec_cmd("walker -m symbols"))               -- desc: emoji / symbol picker
+hl.bind(mainMod .. " + SHIFT + R",  hl.dsp.exec_cmd("~/.local/bin/screenrec region"))   -- desc: record region (again to stop)
+hl.bind(mainMod .. " + ALT + R",    hl.dsp.exec_cmd("~/.local/bin/screenrec screen"))   -- desc: record screen (again to stop)
+
+-- Focus with mainMod + arrows
 
 hl.bind(mainMod .. " + ALT + left",  hl.dsp.focus({ direction = "left" }))
 hl.bind(mainMod .. " + ALT + right", hl.dsp.focus({ direction = "right" }))

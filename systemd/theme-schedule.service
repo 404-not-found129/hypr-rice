@@ -1,0 +1,8 @@
+[Unit]
+Description=hypr-rice day/night theme schedule
+# Needs a running Hyprland session (aether reloads Hyprland and waybar)
+ConditionEnvironment=HYPRLAND_INSTANCE_SIGNATURE
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/theme-schedule run

@@ -11,3 +11,4 @@ pkill -SIGUSR2 waybar   # reload config + style with the new palette
 "$HOME/.local/bin/game-icons" >/dev/null 2>&1       # per-theme badged app icon set
 "$HOME/.local/bin/game-cursors" >/dev/null 2>&1     # per-theme recolored cursor set
 "$HOME/.local/bin/eza-theme" >/dev/null 2>&1        # per-theme eza (ls) colors
+"$HOME/.local/bin/color-scheme-sync" >/dev/null 2>&1  # light/dark for GTK, portal, browsers

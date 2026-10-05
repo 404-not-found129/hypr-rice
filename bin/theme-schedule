@@ -1,0 +1,56 @@
+#!/bin/bash
+# Day/night theme schedule. A systemd user timer runs `theme-schedule run`
+# every 10 minutes; it applies the day theme after sunrise and the night
+# theme after sunset. Picking a theme by hand is respected until the next
+# sunrise/sunset boundary -- the schedule only switches when the period
+# changes, it never fights you mid-period.
+#
+#   theme-schedule on | off | status | run
+# Settings: ~/.config/hypr-rice/schedule
+
+conf="$HOME/.config/hypr-rice/schedule"
+last="$HOME/.cache/hypr-rice/schedule-period"
+
+day=catppuccin-latte
+night=rose-pine
+sunrise=07:00
+sunset=19:00
+# shellcheck source=/dev/null
+[ -f "$conf" ] && . "$conf"
+
+mins() { local h=${1%%:*} m=${1##*:}; echo $(( 10#$h * 60 + 10#$m )); }
+
+period() {
+    local now
+    now=$(mins "$(date +%H:%M)")
+    if (( now >= $(mins "$sunrise") && now < $(mins "$sunset") )); then echo day; else echo night; fi
+}
+
+case "${1:-status}" in
+    run)
+        p=$(period)
+        mkdir -p "$(dirname "$last")"
+        [ "$(cat "$last" 2>/dev/null)" = "$p" ] && exit 0
+        printf '%s' "$p" > "$last"
+        [ "$p" = day ] && t=$day || t=$night
+        [ "$("$HOME/.local/bin/themectl" current)" = "$t" ] && exit 0
+        exec "$HOME/.local/bin/themectl" set "$t"
+        ;;
+    on)
+        rm -f "$last"   # apply the right theme for right now
+        systemctl --user enable --now theme-schedule.timer
+        echo "on: $day from $sunrise, $night from $sunset  (edit $conf)"
+        ;;
+    off)
+        systemctl --user disable --now theme-schedule.timer
+        echo "off"
+        ;;
+    status)
+        state=$(systemctl --user is-active theme-schedule.timer 2>/dev/null)
+        echo "schedule: ${state:-inactive}"
+        echo "day:   $day (from $sunrise)"
+        echo "night: $night (from $sunset)"
+        echo "now:   $(period)"
+        ;;
+    *) echo "usage: theme-schedule [on|off|status|run]" >&2; exit 1 ;;
+esac

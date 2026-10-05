@@ -1,0 +1,35 @@
+{
+  "name": "everforest",
+  "timestamp": 1783400000002,
+  "palette": {
+    "colors": [
+      "#2d353b",
+      "#e67e80",
+      "#a7c080",
+      "#dbbc7f",
+      "#7fbbb3",
+      "#d699b6",
+      "#83c092",
+      "#d3c6aa",
+      "#5c6a72",
+      "#e67e80",
+      "#a7c080",
+      "#dbbc7f",
+      "#7fbbb3",
+      "#d699b6",
+      "#83c092",
+      "#e4e1cd"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/everforest/wallhaven-399d26.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#a7c080",
+      "cursor": "#83c092",
+      "selection_foreground": "#2d353b",
+      "selection_background": "#a7c080"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

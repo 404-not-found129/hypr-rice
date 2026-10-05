@@ -1,0 +1,35 @@
+{
+  "name": "dracula",
+  "timestamp": 1783400000004,
+  "palette": {
+    "colors": [
+      "#282a36",
+      "#ff5555",
+      "#50fa7b",
+      "#f1fa8c",
+      "#bd93f9",
+      "#ff79c6",
+      "#8be9fd",
+      "#f8f8f2",
+      "#6272a4",
+      "#ff6e6e",
+      "#69ff94",
+      "#ffffa5",
+      "#d6acff",
+      "#ff92df",
+      "#a4ffff",
+      "#ffffff"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/dracula/wallhaven-k81776.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#bd93f9",
+      "cursor": "#ff79c6",
+      "selection_foreground": "#282a36",
+      "selection_background": "#bd93f9"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

@@ -1,6 +1,8 @@
 # hypr-rice
 
-A Hyprland rice with **one-click switchable game themes**. Pick a theme and
+A Hyprland rice with **one-click switchable themes** -- game-inspired ones
+*and* classic editor/aesthetic palettes (Nord, Rosé Pine, Everforest,
+Kanagawa, Dracula, Catppuccin Latte, ...), including a **light theme**. Pick a theme and
 *everything* follows: wallpaper, window borders, terminal colors, waybar
 (colors *and* icons), lock screen, notification center, your folder icon
 tint, the mouse cursor set, and even the app icons in the launcher --
@@ -20,6 +22,8 @@ specific art.
 
 ## Themes
 
+**Games**
+
 | Theme | Vibe | Waybar identity |
 |---|---|---|
 |  **elden-ring** | Erdtree gold on deep umber *(default)* | crossed swords, embers, hourglass |
@@ -27,9 +31,24 @@ specific art.
 |  **god-of-war** | Norse gold & frost, Kratos art | axe, sword, shield |
 |  **fallout** | Pip-Boy green terminal | radioactive, radio tower |
 |  **cyberpunk-2077** | Night City black & construct yellow | samurai skull, chips, lightning |
+
+**Aesthetic**
+
+| Theme | Vibe | Waybar identity |
+|---|---|---|
+| 󰜗 **nord** | arctic, north-bluish calm | snowflakes, peaks, waves |
+| 󰉊 **rose-pine** | soho-vibes rose & iris on deep night | flowers, crescent moon |
+| 󰐅 **everforest** | soft forest greens, easy on the eyes | pines, leaves, sprouts |
+| 󰞍 **kanagawa** | ukiyo-e wave blue & carp gold | waves, fish, anchor, hanko seal badge |
+| 󰭟 **dracula** | the classic purple & pink | bats, spider, coffin |
+| 󰅶 **catppuccin-latte** | pastel *light* theme | coffee, tea, cake |
+|  **catppuccin-mocha** | pastel mauve | cat, paw, Pac-Man workspaces |
 |  **tokyo-night** | indigo night city | torii gate, crescent moon |
 |  **gruvbox** | warm retro amber | coffee + classic icons |
-|  **catppuccin-mocha** | pastel mauve | cat, paw, Pac-Man workspaces |
+
+Groups live in `~/.config/hypr-rice/categories`; the picker shows them as
+separate sections and `themectl random games` / `themectl random aesthetic`
+picks within one.
 
 Each theme has its **own wallpaper collection** — cycling never leaks another
 theme's wallpapers — and an extra **auto mode** extracts a palette from
@@ -37,16 +56,46 @@ whatever wallpaper is currently showing.
 
 ## Keybinds (highlights)
 
+Press **`Super+/`** for the full, searchable list (read live from your
+`hyprland.lua`, so it never goes stale -- pick an entry to run it).
+
 | Keys | Action |
 |---|---|
-| `Super+T` | Visual theme picker (wallpaper cards, click / arrows / 1-9) |
+| `Super+T` | Visual theme picker (sections, click / arrows / 1-9, `R` = random) |
+| `Super+Shift+T` | Random theme |
+| `Super+Ctrl+T` | Theme from the current wallpaper (auto palette) |
 | `Super+←/→` | Previous / next wallpaper *within the current theme* |
+| `Super+Shift+W` | Random wallpaper from the current theme |
+| `Super+N` | Night light on/off (hyprsunset) |
+| `Super+Shift+R` / `Super+Alt+R` | Record a region / the screen (press again to stop) |
+| `Super+.` | Emoji & symbol picker |
 | `Super+Return` | Terminal (alacritty, frosted-glass blur) |
 | `Super+Space` | Launcher (walker) |
 | `Super+E` | File manager (thunar, theme-tinted folder icons) |
 | `Super+L` | Lock screen (hyprlock, themed) |
 | `Super+Alt+←/→`, `Super+↑/↓` | Move window focus |
 | `Print` / `Shift+Print` | Region / window screenshot |
+
+## Extras
+
+- **Light/dark follows the theme.** Pick a light theme (catppuccin-latte) and
+  GTK/libadwaita apps, Firefox/Chromium and Electron apps switch to light
+  mode too; dark themes switch them back. Decided from the palette itself, so
+  it also works for *auto* themes pulled from a bright wallpaper.
+- **Day/night schedule.** `theme-schedule on` applies a day theme after
+  sunrise and a night theme after sunset (defaults: catppuccin-latte /
+  rose-pine at 07:00 / 19:00 -- edit `~/.config/hypr-rice/schedule`). Picking
+  a theme by hand is respected until the next sunrise/sunset.
+  `theme-schedule off` / `status`.
+- **`themectl`** -- scriptable theme control:
+  `themectl list | current | set <theme> | random [games|aesthetic] | next | prev | auto`.
+- **Waybar additions:** now-playing (mpris, scroll to skip), caffeine
+  (idle-lock inhibitor), night light, battery, backlight and bluetooth
+  (auto-hidden when the hardware isn't there), a recording indicator that
+  only appears while recording (click to stop), and a theme button
+  (click: picker, right-click: random, middle-click: from wallpaper).
+- **Screen recordings** land in `~/Videos/recordings`, with a notification
+  when saved.
 
 ## Install
 
@@ -66,7 +115,7 @@ The installer:
    if you have neither.
 2. **Backs up** any configs it would overwrite to `~/.config-backup-<date>/`.
 3. Copies configs, scripts, and systemd user drop-ins into place.
-4. Installs the bundled wallpaper collections (all 8 themes), then fetches
+4. Installs the bundled wallpaper collections (all 14 themes), then fetches
    anything missing from wallhaven as a fallback.
 5. Sets up folder-icon tinting (papirus-folders + an ACL so no password
    prompts on theme switch).
@@ -76,6 +125,9 @@ It is **idempotent** — safe to re-run (e.g. to retry failed wallpaper
 downloads).
 
 Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
+
+**Updating:** `git pull && ./install.sh` -- your `~/.config/hypr-rice/`
+settings (theme groups, schedule) are never overwritten.
 
 ## How it works
 
@@ -105,20 +157,28 @@ Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
   switching never waits on generation. Note: apps already running when
   you switch keep their old cursors until restarted (Wayland apps load
   cursor themes at startup).
-- **`bin/theme-picker`** (Super+T) is a floating GTK4 grid of theme cards --
-  wallpaper preview, palette swatches, active theme highlighted -- styled by
+- **`bin/theme-picker`** (Super+T) is a floating GTK4 grid of theme cards,
+  split into *games* and *aesthetic* sections -- wallpaper preview, palette
+  swatches, a sun mark on light themes, active theme highlighted -- styled by
   the current theme's own colors. Click a card, use arrow keys + Enter, or
-  press 1-9; Esc closes; Super+T again toggles. It runs as a resident
+  press 1-9; `R` picks a random theme; Esc closes; Super+T again toggles. It runs as a resident
   service (autostarted by Hyprland) with cached wallpaper thumbnails, so
   the window appears in ~0.3s instead of paying GTK startup + 4K image
   decode on every open. (`bin/themeswitch` remains as a plain walker-dmenu
-  fallback.) The active theme's wallpapers are mirrored into `~/Wallpapers`
+  fallback.) Both apply through **`bin/themectl`**, the single entry point
+  that takes the apply lock, records the active theme and runs Aether. The active theme's wallpapers are mirrored into `~/Wallpapers`
   so the Aether GUI's local browser only shows on-theme ones.
 - **`bin/wallcycle`** (Super+←/→) cycles the active theme's collection through
   `aether --generate`, so colors re-extract per wallpaper. A shared lock keeps
   the two scripts from ever running two applies at once.
 - **`bin/waybar-theme-icons`** patches waybar's config with each theme's icon
   set (all glyphs verified against JetBrainsMono Nerd Font).
+- **`bin/color-scheme-sync`** (post-apply) sets the freedesktop
+  `color-scheme` and GTK's `prefer-dark-theme` from the palette's background
+  luminance.
+- **`bin/nightlight`**, **`bin/screenrec`**, **`bin/keybinds`** and
+  **`bin/theme-schedule`** (+ `theme-schedule.timer`, a systemd user timer
+  that is *off* until you run `theme-schedule on`) back the extras above.
 - **`bin/eza-theme`** writes an `EZA_COLORS` string from the theme accent to
   `~/.config/eza/colors.sh` (sourced by `.bashrc`), so `ls`/`ll`/`la` (aliased
   to [eza](https://github.com/eza-community/eza) with icons + git columns)
@@ -132,9 +192,13 @@ up automatically by both the cycler and the GUI mirror.
 ### Add a new theme
 
 Create a blueprint JSON in `~/.config/aether/blueprints/` (copy an existing
-one), make a matching wallpaper folder in
-`~/Pictures/wallpapers/collections/<name>/`, and optionally add an icon set in
-`bin/waybar-theme-icons`. It appears in Super+T automatically.
+one; set `"lightMode": true` for a light palette), make a matching wallpaper
+folder in `~/Pictures/wallpapers/collections/<name>/`, and optionally add an
+icon set in `bin/waybar-theme-icons`. It appears in Super+T automatically, in
+the *aesthetic* section unless you list it as `games` in
+`~/.config/hypr-rice/categories`. Its launcher icons get a neutral badge
+(stars, coins, hearts, gears) until you give it its own entry in
+`bin/game-icons`.
 
 ## Troubleshooting
 

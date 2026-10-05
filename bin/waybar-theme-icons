@@ -54,6 +54,37 @@ SETS = {
         logo="\U000f011b",                                    # cat (keeps pacman ws)
         cpu="\U000f03e9", memory="\U000f02d1",                # paw / heart
         volume=["\U000f075a"] * 3),
+    # ---- non-gaming themes ----
+    "nord": theme_set(
+        logo="\U000f0717", ws_active="\U000f0717", ws_inactive="\U000f0766",  # snowflake
+        clock="\U000f050f", calendar="\U000f02f5",            # thermometer / peaks
+        cpu="\U000f0f2a", memory="\U000f01bc",                # snowflake variant / db
+        volume=["\U000f078d"] * 3, power="\U000f04b7"),       # waves / snowman
+    "rose-pine": theme_set(
+        logo="\U000f024a", ws_active="\U000f024a", ws_inactive="\U000f09f0",  # flower / outline
+        clock="\U000f0f65", calendar="\U000f00ed",            # crescent moon
+        cpu="\U000f09f1", memory="\U000f02d1",                # tulip / heart
+        volume=["\U000f075a"] * 3, power="\U000f0f65"),
+    "everforest": theme_set(
+        logo="\U000f0405", ws_active="\U000f0531", ws_inactive="\U000f032a",  # pine / tree / leaf
+        clock="\U000f0599", calendar="\U000f00ed",            # sun
+        cpu="\U000f0e66", memory="\U000f07df",                # sprout / mushroom
+        volume=["\U000f06d3"] * 3, power="\U000f0405"),       # feather
+    "kanagawa": theme_set(
+        logo="\U000f078d", ws_active="\U000f0f2e", ws_inactive="\U000f0766",  # waves
+        clock="\U000f05e2", calendar="\U000f00ed",            # candle
+        cpu="\U000f023a", memory="\U000f0833",                # fish / ship wheel
+        volume=["\U000f078d"] * 3, power="\U000f0031"),       # anchor
+    "dracula": theme_set(
+        logo="\U000f0b5f", ws_active="\U000f0b5f", ws_inactive="\U000f0766",  # bat / dot
+        clock="\U000f0594", calendar="\U000f00ed",            # night
+        cpu="\U000f11ea", memory="\U000f0cec",                # spider / blood bag
+        volume=["\U000f075a"] * 3, power="\U000f0b7f"),       # coffin
+    "catppuccin-latte": theme_set(
+        logo="\U000f0176", ws_active="\U000f0198", ws_inactive="\U000f0766",  # coffee / cookie
+        clock="\U000f0d9e", calendar="\U000f00e9",            # tea / cake
+        cpu="\U000f0599", memory="\U000f02d1",                # sun / heart
+        volume=["\U000f075a"] * 3, power="\U000f024a"),       # flower
 }
 
 state = Path.home() / ".config/aether/current-theme"

@@ -1,0 +1,35 @@
+{
+  "name": "catppuccin-latte",
+  "timestamp": 1783400000005,
+  "palette": {
+    "colors": [
+      "#eff1f5",
+      "#d20f39",
+      "#40a02b",
+      "#df8e1d",
+      "#1e66f5",
+      "#ea76cb",
+      "#179299",
+      "#4c4f69",
+      "#9ca0b0",
+      "#d20f39",
+      "#40a02b",
+      "#df8e1d",
+      "#1e66f5",
+      "#ea76cb",
+      "#179299",
+      "#5c5f77"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/catppuccin-latte/wallhaven-oxeo25.jpg",
+    "lightMode": true,
+    "extendedColors": {
+      "accent": "#8839ef",
+      "cursor": "#dc8a78",
+      "selection_foreground": "#eff1f5",
+      "selection_background": "#8839ef"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

@@ -20,7 +20,8 @@ BACKUP="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
 command -v sudo >/dev/null || die "sudo is required."
 
 info "This will install packages and place configs for: Hyprland (Lua config),"
-info "waybar, alacritty/kitty, Aether theming, theme switcher and wallpaper cycling."
+info "waybar, alacritty/kitty, Aether theming (14 themes), theme picker, wallpaper"
+info "cycling, night light, screen recording and a day/night theme schedule."
 read -rp "Continue? [y/N] " a; [[ ${a,,} == y* ]] || exit 0
 
 # ---------------------------------------------------------- dependencies ----
@@ -31,6 +32,8 @@ PACMAN_DEPS=(
   papirus-icon-theme breeze-cursors xorg-xcursorgen ttf-jetbrains-mono-nerd
   fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
   rofi-wayland git base-devel
+  playerctl brightnessctl hyprsunset wf-recorder slurp jq libnotify
+  bluez bluez-utils blueman
 )
 AUR_DEPS=(
   aether walker-bin wlogout
@@ -77,10 +80,14 @@ cp -r "$REPO/config/aether/custom" "$HOME/.config/aether/"
 mkdir -p "$HOME/.config/aether/blueprints"
 cp "$REPO/config/aether/blueprints/"*.json "$HOME/.config/aether/blueprints/"
 
+# Theme groups + day/night schedule settings. -n: never clobber your edits.
+mkdir -p "$HOME/.config/hypr-rice"
+cp -n "$REPO/config/hypr-rice/"* "$HOME/.config/hypr-rice/"
+
 mkdir -p "$HOME/.local/bin"
 cp "$REPO/bin/"* "$HOME/.local/bin/"
-chmod +x "$HOME/.local/bin/"{wallcycle,themeswitch,papirus-accent,waybar-theme-icons} \
-         "$HOME/.config/aether/custom/hypr-wallpaper/post-apply.sh"
+for f in "$REPO/bin/"*; do chmod +x "$HOME/.local/bin/$(basename "$f")"; done
+chmod +x "$HOME/.config/aether/custom/hypr-wallpaper/post-apply.sh"
 
 mkdir -p "$HOME/.config/systemd/user"
 cp -r "$REPO/systemd/." "$HOME/.config/systemd/user/"
@@ -163,8 +170,9 @@ for bp in "$HOME/.config/aether/blueprints/"*.json; do
     || warn "cursor set for $t failed to build (will retry on first switch)"
 done
 
-# eza (ls) colors for the default theme, so the first shell has them
+# eza (ls) colors + light/dark preference for the default theme
 python3 "$HOME/.local/bin/eza-theme" >/dev/null 2>&1 || true
+python3 "$HOME/.local/bin/color-scheme-sync" >/dev/null 2>&1 || true
 
 # eza aliases + fastfetch in new terminals
 if ! grep -q "eza (modern ls)" "$HOME/.bashrc" 2>/dev/null; then
@@ -174,9 +182,13 @@ fi
 
 echo
 info "${BLD}Done!${RST} Log into a Hyprland session and:"
-echo "    Super+T           switch theme (elden-ring, cyberpunk-2077, god-of-war, ...)"
-echo "    Super+Left/Right  cycle wallpapers within the current theme"
-echo "    Super+Return      terminal (alacritty)   Super+Space  launcher (walker)"
+echo "    Super+T           switch theme (games: elden-ring, fallout, ...  aesthetic: nord, rose-pine, ...)"
+echo "    Super+Shift+T     random theme           Super+Left/Right  cycle wallpapers"
+echo "    Super+Return      terminal (alacritty)   Super+Space       launcher (walker)"
+echo "    Super+/           every keybind, searchable"
+echo
+echo "  Optional: 'theme-schedule on' switches to a light theme by day and a dark one"
+echo "  at night (edit ~/.config/hypr-rice/schedule)."
 echo
 echo "  First theme apply happens inside Hyprland: press Super+T and pick one."
 [[ -d $BACKUP ]] && echo "  Your previous configs are in: $BACKUP"

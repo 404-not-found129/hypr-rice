@@ -1,0 +1,33 @@
+#!/bin/bash
+# Night light (blue-light filter) via hyprsunset. Super+N toggles it; the
+# waybar module calls `nightlight status` and gets JSON back.
+#
+#   nightlight toggle | on | off | status
+# Temperature: NIGHTLIGHT_TEMP (default 4000 K).
+
+temp=${NIGHTLIGHT_TEMP:-4000}
+
+running() { pgrep -x hyprsunset >/dev/null; }
+
+on() {
+    running && return
+    setsid hyprsunset -t "$temp" >/dev/null 2>&1 &
+}
+
+off() { pkill -x hyprsunset; }
+
+signal_bar() { pkill -RTMIN+9 waybar 2>/dev/null; }
+
+case "${1:-toggle}" in
+    on)     on; signal_bar ;;
+    off)    off; signal_bar ;;
+    toggle) if running; then off; else on; fi; signal_bar ;;
+    status)
+        if running; then
+            printf '{"text":"󰖔","class":"on","tooltip":"Night light on (%sK)"}\n' "$temp"
+        else
+            printf '{"text":"󰖨","class":"off","tooltip":"Night light off"}\n'
+        fi
+        ;;
+    *) echo "usage: nightlight [toggle|on|off|status]" >&2; exit 1 ;;
+esac

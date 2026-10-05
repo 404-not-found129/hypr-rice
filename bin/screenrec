@@ -1,0 +1,49 @@
+#!/bin/bash
+# Screen recording toggle with wf-recorder. Running it again while a
+# recording is in progress stops it. Files go to ~/Videos/recordings.
+#
+#   screenrec region   select an area with slurp (Super+Shift+R)
+#   screenrec screen   whole focused monitor   (Super+Alt+R)
+#   screenrec stop
+#   screenrec status   JSON for the waybar module (hidden when idle)
+
+dir="$HOME/Videos/recordings"
+
+signal_bar() { pkill -RTMIN+10 waybar 2>/dev/null; }
+
+stop() {
+    pkill -INT -x wf-recorder || return 1
+    signal_bar
+    notify-send -a hypr-rice -t 3000 "Recording saved" "$(ls -t "$dir"/*.mp4 2>/dev/null | head -n1)"
+}
+
+start() {
+    mkdir -p "$dir"
+    local out="$dir/rec-$(date +%Y%m%d-%H%M%S).mp4"
+    local args=(-f "$out")
+    if [[ $1 == region ]]; then
+        local geo
+        geo=$(slurp) || exit 0  # Esc cancels
+        args+=(-g "$geo")
+    else
+        local mon
+        mon=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+        [[ -n $mon ]] && args+=(-o "$mon")
+    fi
+    setsid wf-recorder "${args[@]}" >/dev/null 2>&1 &
+    sleep 0.3
+    signal_bar
+}
+
+case "${1:-region}" in
+    region|screen) pgrep -x wf-recorder >/dev/null && stop || start "$1" ;;
+    stop)   stop ;;
+    status)
+        if pgrep -x wf-recorder >/dev/null; then
+            printf '{"text":"󰑋  REC","class":"recording","tooltip":"Recording -- click to stop"}\n'
+        else
+            printf '{"text":""}\n'
+        fi
+        ;;
+    *) echo "usage: screenrec [region|screen|stop|status]" >&2; exit 1 ;;
+esac

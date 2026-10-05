@@ -66,7 +66,9 @@ tooltip label { color: @text; }
 }
 
 #tray, #cpu, #memory, #pulseaudio, #network,
-#custom-notifications, #custom-power {
+#custom-notifications, #custom-power,
+#mpris, #idle_inhibitor, #custom-nightlight, #backlight,
+#bluetooth, #battery, #custom-theme, #custom-recording {
     background: alpha(@surface0, 0.6);
     border-radius: 10px;
     margin: 4px 3px;
@@ -81,6 +83,29 @@ tooltip label { color: @text; }
 #network { color: @teal; }
 #network.disconnected { color: @red; }
 #custom-notifications { color: @peach; }
+
+#mpris { color: @lavender; margin-left: 6px; }
+#mpris.paused { color: @subtext0; }
+#idle_inhibitor { color: @subtext0; }
+#idle_inhibitor.activated { color: @yellow; }
+#custom-nightlight { color: @subtext0; }
+#custom-nightlight.on { color: @peach; }
+#backlight { color: @yellow; }
+#bluetooth { color: @blue; }
+#bluetooth.disabled, #bluetooth.off { color: @subtext0; }
+#battery { color: @green; }
+#battery.warning:not(.charging) { color: @peach; }
+#battery.critical:not(.charging) { color: @red; }
+#custom-theme { color: @mauve; }
+
+/* only takes space while a recording is running */
+#custom-recording { padding: 0; margin: 0; background: transparent; }
+#custom-recording.recording {
+    color: @base;
+    background: @red;
+    padding: 0 12px;
+    margin: 4px 3px;
+}
 
 #custom-power {
     color: @red;

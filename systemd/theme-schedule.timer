@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the hypr-rice day/night theme schedule every 10 minutes
+
+[Timer]
+OnStartupSec=30s
+OnCalendar=*:0/10
+Persistent=true
+
+[Install]
+WantedBy=timers.target

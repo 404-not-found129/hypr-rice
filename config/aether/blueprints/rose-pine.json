@@ -1,0 +1,35 @@
+{
+  "name": "rose-pine",
+  "timestamp": 1783400000001,
+  "palette": {
+    "colors": [
+      "#191724",
+      "#eb6f92",
+      "#31748f",
+      "#f6c177",
+      "#9ccfd8",
+      "#c4a7e7",
+      "#ebbcba",
+      "#e0def4",
+      "#6e6a86",
+      "#eb6f92",
+      "#31748f",
+      "#f6c177",
+      "#9ccfd8",
+      "#c4a7e7",
+      "#ebbcba",
+      "#e0def4"
+    ],
+    "wallpaper": "__HOME__/Pictures/wallpapers/collections/rose-pine/wallhaven-jxl3qp.jpg",
+    "lightMode": false,
+    "extendedColors": {
+      "accent": "#ebbcba",
+      "cursor": "#c4a7e7",
+      "selection_foreground": "#191724",
+      "selection_background": "#ebbcba"
+    },
+    "lockedColors": []
+  },
+  "adjustments": {},
+  "settings": {}
+}

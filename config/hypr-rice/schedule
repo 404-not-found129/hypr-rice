@@ -1,0 +1,6 @@
+# Day/night theme schedule -- turn on with `theme-schedule on`.
+# Any theme name from `themectl list` works.
+day=catppuccin-latte
+night=rose-pine
+sunrise=07:00
+sunset=19:00

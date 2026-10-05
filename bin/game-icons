@@ -64,7 +64,15 @@ SHAPES = {
     "tokyo-night":       ("rect", dict(x=6, y=6, width=116, height=116, rx=22)),
     "gruvbox":           ("rect", dict(x=7, y=7, width=114, height=114, rx=12)),
     "catppuccin-mocha":  ("rect", dict(x=8, y=10, width=112, height=112, rx=26)),
+    # non-gaming themes
+    "nord":              ("rect", dict(x=6, y=6, width=116, height=116, rx=20)),
+    "rose-pine":         ("circle", dict(cx=64, cy=64, r=59)),
+    "everforest":        ("rect", dict(x=6, y=6, width=116, height=116, rx=34)),
+    "kanagawa":          ("rect", dict(x=6, y=6, width=116, height=116, rx=6)),
+    "dracula":           ("polygon", dict(points="64,4 120,34 120,94 64,124 8,94 8,34")),
+    "catppuccin-latte":  ("rect", dict(x=8, y=8, width=112, height=112, rx=30)),
 }
+DEFAULT_SHAPE = ("rect", dict(x=6, y=6, width=116, height=116, rx=20))
 
 
 def shape_tag(kind, attrs, **extra):
@@ -239,6 +247,98 @@ def heart(cx, cy, s, color):
              C {cx+s*0.5:.1f} {cy-s*1.1:.1f} {cx+s*1.3:.1f} {cy-s*0.2:.1f} {cx} {cy+s*0.9:.1f} Z" fill="{color}" opacity="0.85"/>'''
 
 
+def snowflake(cx, cy, s, color):
+    """Six-armed snowflake -- three crossing strokes with small V tips."""
+    import math
+    out = []
+    for i in range(6):
+        a = math.radians(i * 60)
+        x2, y2 = cx + s * math.sin(a), cy - s * math.cos(a)
+        out.append(f'<line x1="{cx}" y1="{cy}" x2="{x2:.1f}" y2="{y2:.1f}"/>')
+        mx, my = cx + s * 0.6 * math.sin(a), cy - s * 0.6 * math.cos(a)
+        for d in (-0.6, 0.6):
+            tx, ty = mx + s * 0.3 * math.sin(a + d), my - s * 0.3 * math.cos(a + d)
+            out.append(f'<line x1="{mx:.1f}" y1="{my:.1f}" x2="{tx:.1f}" y2="{ty:.1f}"/>')
+    return (f'<g stroke="{color}" stroke-width="{max(1.5, s*0.13):.1f}" stroke-linecap="round" opacity="0.85">'
+            + "".join(out) + "</g>")
+
+
+def peaks(cx, cy, s, color):
+    """Two mountain peaks with snow caps -- generic landscape glyph."""
+    return f'''
+    <path d="M {cx-s*1.3:.1f} {cy+s*0.7:.1f} L {cx-s*0.35:.1f} {cy-s*0.8:.1f} L {cx+s*0.2:.1f} {cy+s*0.05:.1f}
+             L {cx+s*0.55:.1f} {cy-s*0.4:.1f} L {cx+s*1.3:.1f} {cy+s*0.7:.1f} Z" fill="{color}" opacity="0.8"/>
+    <path d="M {cx-s*0.35:.1f} {cy-s*0.8:.1f} L {cx-s*0.6:.1f} {cy-s*0.4:.1f} L {cx-s*0.1:.1f} {cy-s*0.4:.1f} Z" fill="white" opacity="0.7"/>'''
+
+
+def leaf(cx, cy, s, color):
+    """Simple almond leaf with a midrib."""
+    return f'''
+    <path d="M {cx-s*0.9:.1f} {cy+s*0.9:.1f} C {cx-s*1.0:.1f} {cy-s*0.4:.1f} {cx-s*0.1:.1f} {cy-s*1.1:.1f} {cx+s:.1f} {cy-s:.1f}
+             C {cx+s*1.1:.1f} {cy+s*0.1:.1f} {cx+s*0.4:.1f} {cy+s:.1f} {cx-s*0.9:.1f} {cy+s*0.9:.1f} Z" fill="{color}" opacity="0.8"/>
+    <line x1="{cx-s*0.9:.1f}" y1="{cy+s*0.9:.1f}" x2="{cx+s*0.6:.1f}" y2="{cy-s*0.6:.1f}" stroke="white" stroke-width="{max(1, s*0.08):.1f}" opacity="0.45"/>'''
+
+
+def pine(cx, cy, s, color):
+    """Stacked-triangle pine tree."""
+    return f'''
+    <polygon points="{cx},{cy-s*1.2:.1f} {cx+s*0.6:.1f},{cy-s*0.3:.1f} {cx-s*0.6:.1f},{cy-s*0.3:.1f}" fill="{color}" opacity="0.85"/>
+    <polygon points="{cx},{cy-s*0.7:.1f} {cx+s*0.85:.1f},{cy+s*0.5:.1f} {cx-s*0.85:.1f},{cy+s*0.5:.1f}" fill="{color}" opacity="0.85"/>
+    <rect x="{cx-s*0.13:.1f}" y="{cy+s*0.5:.1f}" width="{s*0.26:.1f}" height="{s*0.5:.1f}" fill="{color}" opacity="0.85"/>'''
+
+
+def wave(cx, cy, s, color):
+    """Two stacked rolling-wave strokes, woodblock-print style."""
+    out = []
+    for dy in (-0.35, 0.35):
+        y = cy + s * dy
+        out.append(f'<path d="M {cx-s*1.3:.1f} {y:.1f} q {s*0.32:.1f} {-s*0.45:.1f} {s*0.65:.1f} 0 '
+                   f't {s*0.65:.1f} 0 t {s*0.65:.1f} 0 t {s*0.65:.1f} 0"/>')
+    return (f'<g fill="none" stroke="{color}" stroke-width="{max(1.5, s*0.16):.1f}" stroke-linecap="round" opacity="0.85">'
+            + "".join(out) + "</g>")
+
+
+def crescent(cx, cy, r, color):
+    """Crescent moon drawn as two arcs (no background-colored cut-out):
+    the outer disc edge, then a wider inner arc back between the same two
+    points on that edge."""
+    x, dy = cx + r * 0.35, r * 0.937
+    return (f'<path d="M {x:.1f} {cy-dy:.1f} A {r:.1f} {r:.1f} 0 1 0 {x:.1f} {cy+dy:.1f} '
+            f'A {r*1.05:.1f} {r*1.05:.1f} 0 0 1 {x:.1f} {cy-dy:.1f} Z" fill="{color}" opacity="0.85"/>')
+
+
+def bat(cx, cy, s, color):
+    """Generic bat silhouette -- scalloped wings around a small body."""
+    return f'''<path d="M {cx} {cy-s*0.25:.1f}
+        L {cx-s*0.15:.1f} {cy-s*0.55:.1f} L {cx-s*0.25:.1f} {cy-s*0.2:.1f}
+        C {cx-s*0.6:.1f} {cy-s*0.6:.1f} {cx-s*1.1:.1f} {cy-s*0.55:.1f} {cx-s*1.4:.1f} {cy-s*0.2:.1f}
+        Q {cx-s*1.1:.1f} {cy:.1f} {cx-s*1.0:.1f} {cy+s*0.4:.1f} Q {cx-s*0.75:.1f} {cy+s*0.1:.1f} {cx-s*0.5:.1f} {cy+s*0.35:.1f}
+        Q {cx-s*0.3:.1f} {cy+s*0.1:.1f} {cx} {cy+s*0.5:.1f}
+        Q {cx+s*0.3:.1f} {cy+s*0.1:.1f} {cx+s*0.5:.1f} {cy+s*0.35:.1f} Q {cx+s*0.75:.1f} {cy+s*0.1:.1f} {cx+s*1.0:.1f} {cy+s*0.4:.1f}
+        Q {cx+s*1.1:.1f} {cy:.1f} {cx+s*1.4:.1f} {cy-s*0.2:.1f}
+        C {cx+s*1.1:.1f} {cy-s*0.55:.1f} {cx+s*0.6:.1f} {cy-s*0.6:.1f} {cx+s*0.25:.1f} {cy-s*0.2:.1f}
+        L {cx+s*0.15:.1f} {cy-s*0.55:.1f} Z" fill="{color}" opacity="0.85"/>'''
+
+
+def flower(cx, cy, r, color, petals=5):
+    """Simple radial flower: rotated ellipse petals around a center."""
+    out = [f'<ellipse cx="{cx}" cy="{cy-r*0.55:.1f}" rx="{r*0.32:.1f}" ry="{r*0.55:.1f}" '
+           f'transform="rotate({i*360/petals:.0f} {cx} {cy})" fill="{color}" opacity="0.75"/>'
+           for i in range(petals)]
+    return "".join(out) + f'<circle cx="{cx}" cy="{cy}" r="{r*0.25:.1f}" fill="white" opacity="0.6"/>'
+
+
+def mug(cx, cy, s, color):
+    """Coffee mug with a handle and two steam curls."""
+    return f'''
+    <rect x="{cx-s*0.8:.1f}" y="{cy-s*0.3:.1f}" width="{s*1.3:.1f}" height="{s*1.2:.1f}" rx="{s*0.2:.1f}" fill="{color}" opacity="0.85"/>
+    <path d="M {cx+s*0.5:.1f} {cy-s*0.05:.1f} a {s*0.35:.1f} {s*0.35:.1f} 0 0 1 0 {s*0.7:.1f}" fill="none" stroke="{color}" stroke-width="{s*0.18:.1f}" opacity="0.85"/>
+    <g fill="none" stroke="{color}" stroke-width="{max(1, s*0.1):.1f}" stroke-linecap="round" opacity="0.6">
+      <path d="M {cx-s*0.4:.1f} {cy-s*0.5:.1f} q {s*0.2:.1f} {-s*0.25:.1f} 0 {-s*0.5:.1f}"/>
+      <path d="M {cx+s*0.05:.1f} {cy-s*0.5:.1f} q {s*0.2:.1f} {-s*0.25:.1f} 0 {-s*0.5:.1f}"/>
+    </g>'''
+
+
 # Per-theme pool of small, generic emblem functions (name, fn, color-key,
 # size). Each icon in a theme's set draws one, picked by a stable hash of
 # its filename, so the launcher shows a real VARIETY of marks per theme
@@ -252,13 +352,22 @@ EMBLEM_POOLS = {
     "tokyo-night":     [(lambda cx,cy,s,c: torii(cx,cy,s*2.6,s*1.8,c), "muted", 15), (star, "accent2", 12), (coin, "accent2", 12), (lambda cx,cy,s,c: gear(cx,cy,s,c,6), "muted", 13)],
     "gruvbox":         [(terminal_prompt, "border", 15), (lambda cx,cy,s,c: gear(cx,cy,s,c,8), "border", 13), (coin, "border", 12), (star, "flavor_warm", 12)],
     "catppuccin-mocha": [(paw_print, "flavor_pink", 13), (heart, "flavor_pink", 13), (star, "accent2", 12), (coin, "flavor_pink", 12)],
+    "nord":            [(snowflake, "border", 14), (peaks, "accent2", 13), (star, "border", 11), (lambda cx,cy,s,c: gear(cx,cy,s,c,6), "muted", 12)],
+    "rose-pine":       [(flower, "border", 14), (crescent, "accent2", 12), (heart, "flavor_pink", 12), (star, "accent2", 11)],
+    "everforest":      [(leaf, "border", 13), (pine, "accent2", 14), (sprig, "border", 14), (flower, "flavor_warm", 12)],
+    "kanagawa":        [(wave, "border", 13), (lambda cx,cy,s,c: torii(cx,cy,s*2.6,s*1.8,c), "accent2", 15), (crescent, "accent2", 12), (coin, "border", 12)],
+    "dracula":         [(bat, "border", 13), (crescent, "accent2", 12), (star, "accent2", 11), (heart, "flavor_warm", 12)],
+    "catppuccin-latte": [(mug, "border", 13), (flower, "flavor_pink", 13), (heart, "flavor_pink", 12), (star, "accent2", 11)],
 }
+# Themes without their own entry (e.g. ones you add yourself) get a neutral
+# pool instead of borrowing a game's swords.
+DEFAULT_POOL = [(star, "border", 12), (coin, "accent2", 12), (heart, "flavor_pink", 12), (lambda cx,cy,s,c: gear(cx,cy,s,c,8), "muted", 12)]
 
 def pick_emblem_svg(theme, icon_name):
     import hashlib
     color_map = {"border": border, "accent2": accent2, "muted": muted,
                  "flavor_warm": flavor_warm, "flavor_pink": flavor_pink}
-    pool = EMBLEM_POOLS.get(theme, EMBLEM_POOLS["elden-ring"])
+    pool = EMBLEM_POOLS.get(theme, DEFAULT_POOL)
     idx = int(hashlib.md5(icon_name.encode()).hexdigest(), 16) % len(pool)
     fn, color_key, size = pool[idx]
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">{fn(64, 105, size, color_map[color_key])}</svg>'
@@ -325,11 +434,43 @@ def decorations(theme):
         <path d="M 29 14 L 36 14 L 31 6 Z" fill="{flavor_pink}"/>
         <path d="M 91 14 L 98 14 L 96 6 Z" fill="{flavor_pink}"/>'''
 
+    if theme == "nord":
+        return f'''
+        <path d="M 14 34 C 40 14 70 30 114 16" fill="none" stroke="{border}" stroke-width="3" opacity="0.45" stroke-linecap="round"/>
+        <path d="M 14 44 C 44 24 76 40 114 28" fill="none" stroke="{accent2}" stroke-width="2" opacity="0.3" stroke-linecap="round"/>
+        {snowflake(104, 104, 7, accent2)}'''
+
+    if theme == "rose-pine":
+        return f'''
+        <circle cx="64" cy="64" r="50" fill="none" stroke="{accent2}" stroke-width="1.5" opacity="0.5"/>
+        {crescent(98, 26, 8, accent2)}'''
+
+    if theme == "everforest":
+        return f'''
+        <rect x="16" y="16" width="96" height="96" rx="26" fill="none" stroke="{muted}" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6"/>
+        {leaf(22, 24, 9, border)}'''
+
+    if theme == "kanagawa":
+        return f'''
+        <rect x="14" y="14" width="100" height="100" rx="3" fill="none" stroke="{border}" stroke-width="1.5" opacity="0.55"/>
+        <rect x="100" y="100" width="14" height="14" rx="2" fill="{flavor_warm}" opacity="0.9"/>
+        <line x1="104" y1="107" x2="110" y2="107" stroke="{plate}" stroke-width="2"/>'''
+
+    if theme == "dracula":
+        return f'''
+        <polygon points="64,14 110,40 110,88 64,114 18,88 18,40" fill="none" stroke="{accent2}" stroke-width="1.5" opacity="0.55"/>
+        {bat(64, 22, 9, accent2)}'''
+
+    if theme == "catppuccin-latte":
+        return f'''
+        <rect x="16" y="16" width="96" height="96" rx="24" fill="none" stroke="{accent2}" stroke-width="1.5" opacity="0.5"/>
+        {heart(104, 22, 7, flavor_pink)}'''
+
     return ""
 
 
 def badge_svg(theme):
-    kind, attrs = SHAPES.get(theme, SHAPES["elden-ring"])
+    kind, attrs = SHAPES.get(theme, DEFAULT_SHAPE)
     fill_shape = shape_tag(kind, attrs, fill="url(#grad)")
     clip_shape = shape_tag(kind, attrs, fill="white")
     border_shape = shape_tag(kind, attrs, fill="none", stroke=border, **{"stroke-width": 4})

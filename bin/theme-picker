@@ -3,9 +3,11 @@
 
 A floating GTK4 grid of theme cards -- wallpaper preview, name, and accent
 palette swatches -- styled with the ACTIVE theme's colors. Click a card (or
-use arrows + Enter, or keys 1-9) to apply that theme through the same
-locked pipeline the CLI uses. Esc closes. An extra card re-extracts colors
-from the current wallpaper ("auto" mode).
+use arrows + Enter, or keys 1-9) to apply that theme through `themectl`,
+the same locked pipeline the keybinds use. Cards are split into "games" and
+"aesthetic" sections (see ~/.config/hypr-rice/categories). R applies a
+random theme; Esc closes. An extra card re-extracts colors from the current
+wallpaper ("auto" mode).
 
 Fast startup, two tricks:
   * runs as a resident service (`theme-picker --service`, autostarted by
@@ -26,6 +28,8 @@ HOME = Path.home()
 BLUEPRINTS = HOME / ".config/aether/blueprints"
 STATE = HOME / ".config/aether/current-theme"
 THUMBS = HOME / ".cache/hypr-rice-thumbs"
+CATEGORIES = HOME / ".config/hypr-rice/categories"
+THEMECTL = HOME / ".local/bin/themectl"
 
 ICONS = {
     "elden-ring": "\U000f0787",
@@ -36,19 +40,36 @@ ICONS = {
     "tokyo-night": "\U000f11a1",
     "gruvbox": "\U000f0176",
     "catppuccin-mocha": "\U000f011b",
+    "catppuccin-latte": "\U000f0176",
+    "nord": "\U000f0717",
+    "rose-pine": "\U000f024a",
+    "everforest": "\U000f0405",
+    "kanagawa": "\U000f078d",
+    "dracula": "\U000f0b5f",
 }
+
+SECTIONS = (("games", "GAMES"), ("aesthetic", "AESTHETIC"))
 
 
 def apply_theme(name):
     if name == "__auto__":
-        wall = (HOME / "Pictures/wallpapers/wall.png").resolve()
-        cmd = f'exec 9>/tmp/aether-apply.lock; flock -w 60 9 || exit 1; aether --generate "{wall}"'
+        args = ["auto"]
+    elif name == "__random__":
+        args = ["random"]
     else:
-        cmd = (f'exec 9>/tmp/aether-apply.lock; flock -w 60 9 || exit 1; '
-               f"printf '%s' \"{name}\" > \"$HOME/.config/aether/current-theme\"; "
-               f'aether --apply-blueprint "{name}"')
-    subprocess.Popen(["setsid", "bash", "-c", cmd],
+        args = ["set", name]
+    subprocess.Popen(["setsid", str(THEMECTL), *args],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def categories():
+    cats = {}
+    if CATEGORIES.exists():
+        for line in CATEGORIES.read_text().splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and not parts[0].startswith("#"):
+                cats[parts[0]] = parts[1]
+    return cats
 
 
 if len(sys.argv) > 1 and sys.argv[1] == "--apply":
@@ -76,20 +97,30 @@ def thumb_for(wall):
 
 
 def load_themes():
+    """All blueprints, ordered by section then name, followed by the auto
+    and random cards (in the last section)."""
+    cats = categories()
     themes = []
     for f in sorted(BLUEPRINTS.glob("*.json")):
         try:
             bp = json.loads(f.read_text())
         except Exception:
             continue
+        name = bp.get("name", f.stem)
         themes.append({
-            "name": bp.get("name", f.stem),
+            "name": name,
+            "section": cats.get(name, "aesthetic"),
             "wallpaper": bp.get("palette", {}).get("wallpaper", ""),
             "colors": bp.get("palette", {}).get("colors", [])[:8],
+            "light": bp.get("palette", {}).get("lightMode", False),
         })
-    themes.append({"name": "__auto__",
-                   "wallpaper": str(HOME / "Pictures/wallpapers/wall.png"),
-                   "colors": []})
+    order = [k for k, _ in SECTIONS]
+    themes.sort(key=lambda t: (order.index(t["section"]) if t["section"] in order else len(order), t["name"]))
+    wall = str(HOME / "Pictures/wallpapers/wall.png")
+    themes.append({"name": "__auto__", "section": "aesthetic", "wallpaper": wall,
+                   "colors": [], "light": False})
+    themes.append({"name": "__random__", "section": "aesthetic", "wallpaper": wall,
+                   "colors": [], "light": False})
     return themes
 
 
@@ -116,6 +147,10 @@ button.card.current {{ border-color: {accent}; box-shadow: 0 0 14px alpha({accen
 .cardicon {{ color: {accent}; font-family: "JetBrainsMono Nerd Font"; font-size: 15px; }}
 .currenttag {{ color: {accent}; font-family: "JetBrainsMono Nerd Font"; font-size: 10px; }}
 .swatch {{ border-radius: 4px; }}
+.section {{ color: alpha({fg}, 0.55); font-family: "JetBrainsMono Nerd Font"; font-size: 11px;
+            font-weight: 800; letter-spacing: 4px; margin-top: 6px; }}
+.lighttag {{ color: alpha({fg}, 0.6); font-family: "JetBrainsMono Nerd Font"; font-size: 11px; }}
+scrolledwindow, viewport {{ background: transparent; }}
 {sw_rules}
 """
 
@@ -170,7 +205,7 @@ class Picker(Gtk.Application):
         self.provider.load_from_data(css.encode())
 
         win = Gtk.ApplicationWindow(application=self, title="Theme Picker")
-        win.set_default_size(1060, 640)
+        win.set_default_size(1200, 840)
         self.win = win
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8,
@@ -178,17 +213,30 @@ class Picker(Gtk.Application):
         title = Gtk.Label(label="SELECT  THEME")
         title.add_css_class("title")
         root.append(title)
-        sub = Gtk.Label(label="click / arrows + enter / 1-9   ·   esc to close")
+        sub = Gtk.Label(label="click / arrows + enter / 1-9   ·   r random   ·   esc to close")
         sub.add_css_class("subtitle")
-        sub.set_margin_bottom(10)
+        sub.set_margin_bottom(6)
         root.append(sub)
 
-        grid = Gtk.FlowBox(max_children_per_line=3, min_children_per_line=3,
-                           selection_mode=Gtk.SelectionMode.NONE,
-                           row_spacing=14, column_spacing=14, homogeneous=True)
-        for t in themes:
-            grid.append(self.make_card(t, current))
-        root.append(grid)
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        for key, label in SECTIONS:
+            members = [t for t in themes if t["section"] == key]
+            if not members:
+                continue
+            head = Gtk.Label(label=label, xalign=0)
+            head.add_css_class("section")
+            body.append(head)
+            grid = Gtk.FlowBox(max_children_per_line=5, min_children_per_line=5,
+                               selection_mode=Gtk.SelectionMode.NONE,
+                               row_spacing=12, column_spacing=12, homogeneous=True)
+            for t in members:
+                grid.append(self.make_card(t, current))
+            body.append(grid)
+
+        scroll = Gtk.ScrolledWindow(vexpand=True)
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_child(body)
+        root.append(scroll)
         win.set_child(root)
 
         keys = Gtk.EventControllerKey()
@@ -199,7 +247,8 @@ class Picker(Gtk.Application):
     def make_card(self, t, current):
         name = t["name"]
         is_auto = name == "__auto__"
-        shown = "auto (from wallpaper)" if is_auto else name
+        is_random = name == "__random__"
+        shown = {"__auto__": "auto (from wallpaper)", "__random__": "surprise me"}.get(name, name)
 
         btn = Gtk.Button()
         btn.add_css_class("card")
@@ -210,22 +259,29 @@ class Picker(Gtk.Application):
                     margin_top=8, margin_bottom=10, margin_start=8, margin_end=8)
 
         pic = Gtk.Picture()
-        pic.set_size_request(300, 150)
+        pic.set_size_request(200, 104)
         pic.add_css_class("thumbframe")
         pic.set_content_fit(Gtk.ContentFit.COVER)
         th = thumb_for(t["wallpaper"])
         if th:
             pic.set_filename(str(th))
+        if is_random:
+            pic.set_opacity(0.35)
         v.append(pic)
 
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         row.set_halign(Gtk.Align.CENTER)
-        icon = Gtk.Label(label="\U000f02e9" if is_auto else ICONS.get(name, "\U000f03d8"))
+        glyph = "\U000f02e9" if is_auto else "\U000f076e" if is_random else ICONS.get(name, "\U000f03d8")
+        icon = Gtk.Label(label=glyph)
         icon.add_css_class("cardicon")
         row.append(icon)
         lab = Gtk.Label(label=shown)
         lab.add_css_class("cardname")
         row.append(lab)
+        if t["light"]:
+            lt = Gtk.Label(label="\U000f0599")  # sun: light theme
+            lt.add_css_class("lighttag")
+            row.append(lt)
         if name == current:
             cur = Gtk.Label(label="● active")
             cur.add_css_class("currenttag")
@@ -258,6 +314,9 @@ class Picker(Gtk.Application):
             if self.win:
                 self.win.destroy()
                 self.win = None
+            return True
+        if keyval in (Gdk.KEY_r, Gdk.KEY_R):
+            self.choose("__random__")
             return True
         if Gdk.KEY_1 <= keyval <= Gdk.KEY_9:
             idx = keyval - Gdk.KEY_1

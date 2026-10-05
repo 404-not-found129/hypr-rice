@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Keybind cheat sheet (Super+/).
+
+Reads the binds straight out of ~/.config/hypr/hyprland.lua, so it never
+drifts from the real config, and shows them in a searchable walker menu.
+Picking an entry runs it. `keybinds --print` dumps the list to stdout.
+A trailing `-- desc: ...` comment on a bind line overrides its description.
+"""
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+CONF = Path.home() / ".config/hypr/hyprland.lua"
+
+BIND = re.compile(
+    r'^\s*hl\.bind\(\s*(?P<keys>(?:mainMod\s*\.\.\s*)?"[^"]+")\s*,\s*(?P<action>hl\.dsp\.[^\n]*?)\)\s*'
+    r'(?:,\s*\{[^}]*\}\s*)?\)?\s*(?:--\s*desc:\s*(?P<desc>.*))?$')
+
+# Friendlier names for dispatchers that aren't exec_cmd
+NAMES = {
+    "window.close": "close window",
+    "window.float": "toggle floating",
+    "window.pseudo": "pseudo-tile",
+    "window.fullscreen": "fullscreen / maximize",
+    "window.move": "move window",
+    "window.resize": "resize window",
+    "window.drag": "drag window",
+    "layout": "toggle split",
+    "focus": "focus",
+    "workspace.toggle_special": "toggle scratchpad",
+}
+
+
+DIRS = {"l": "left", "r": "right", "u": "up", "d": "down"}
+
+
+def describe(action):
+    m = re.match(r'hl\.dsp\.exec_cmd\("(.*)"\)?', action)
+    if m:
+        cmd = m.group(1).rstrip('")')
+        return re.sub(r"^~/\.local/bin/", "", cmd)
+    m = re.match(r"hl\.dsp\.exec_cmd\((\w+)\)?$", action)
+    if m:  # a Lua variable, e.g. `terminal`
+        return f"{m.group(1)} ({LOCALS.get(m.group(1), '?')})"
+    m = re.match(r"hl\.dsp\.([\w.]+)\((.*)", action)
+    if not m:
+        return action
+    name, args = m.groups()
+    label = NAMES.get(name, name.replace(".", " "))
+    detail = re.search(r'(?:direction|workspace|mode)\s*=\s*"?([\w:+-]+)"?', args)
+    if not detail:
+        return label
+    return f"{label} {DIRS.get(detail.group(1), detail.group(1))}"
+
+
+text = CONF.read_text()
+LOCALS = dict(re.findall(r'^local\s+(\w+)\s*=\s*"([^"]*)"', text, re.M))
+
+
+def binds():
+    rows = []
+    section = ""
+    for line in text.splitlines():
+        c = re.match(r"^\s*--\s*(?!-)(.+)", line)
+        if c and "hl.bind" not in line:
+            section = c.group(1).strip()
+            continue
+        m = BIND.match(line)
+        if not m:
+            continue
+        keys = m.group("keys")
+        keys = re.sub(r'mainMod\s*\.\.\s*"', '"SUPER', keys).strip('"')
+        action = m.group("action")
+        desc = (m.group("desc") or "").strip() or describe(action)
+        cmd = None
+        e = re.match(r'hl\.dsp\.exec_cmd\((?:"(.*?)"|(\w+)\)?$)', action)
+        if e:
+            cmd = e.group(1) or LOCALS.get(e.group(2))
+        rows.append((keys, desc, section, cmd))
+    # The workspace binds are generated in a loop, so the regex can't see them
+    rows.append(("SUPER + 1..0", "go to workspace 1-10", "Workspaces", None))
+    rows.append(("SUPER + SHIFT + 1..0", "move window to workspace 1-10", "Workspaces", None))
+    return rows
+
+
+rows = binds()
+width = max(len(k) for k, *_ in rows) + 2
+lines = [f"{k:<{width}} {d}" for k, d, _, _ in rows]
+
+if "--print" in sys.argv:
+    print("\n".join(lines))
+    sys.exit(0)
+
+choice = subprocess.run(["walker", "--dmenu", "-p", "Keybinds"],
+                        input="\n".join(lines), capture_output=True, text=True).stdout.strip()
+for line, (_, _, _, cmd) in zip(lines, rows):
+    if line.strip() == choice and cmd:
+        subprocess.Popen(["setsid", "bash", "-c", cmd],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        break
