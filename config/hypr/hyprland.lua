@@ -39,6 +39,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
     hl.exec_cmd("awww-daemon")
     hl.exec_cmd("sleep 1 && wp=$(ls -t ~/.config/aether/theme/backgrounds/* 2>/dev/null | head -n1); [ -n \"$wp\" ] && ln -sf \"$wp\" ~/Pictures/wallpapers/wall.png; awww img ~/Pictures/wallpapers/wall.png --transition-type grow --transition-pos center")
+    hl.exec_cmd("sleep 2 && ~/.local/bin/livewall sync")  -- live wallpaper, if on
     hl.exec_cmd("nm-applet")
     hl.exec_cmd("hypridle")
     hl.exec_cmd("~/.local/bin/color-scheme-sync")  -- light/dark follows the active theme
@@ -287,6 +288,7 @@ hl.bind(mainMod .. " + CTRL + T",   hl.dsp.exec_cmd("~/.local/bin/themectl auto"
 hl.bind(mainMod .. " + right",     hl.dsp.exec_cmd("~/.local/bin/wallcycle next"))    -- desc: next wallpaper
 hl.bind(mainMod .. " + left",      hl.dsp.exec_cmd("~/.local/bin/wallcycle prev"))    -- desc: previous wallpaper
 hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("~/.local/bin/wallcycle random"))  -- desc: random wallpaper
+hl.bind(mainMod .. " + ALT + W",   hl.dsp.exec_cmd("~/.local/bin/livewall toggle"))   -- desc: live wallpaper on/off
 
 -- Extras
 hl.bind(mainMod .. " + slash",      hl.dsp.exec_cmd("~/.local/bin/keybinds"))           -- desc: this cheat sheet

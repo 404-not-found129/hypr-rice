@@ -14,13 +14,16 @@ exec 9>/tmp/aether-apply.lock
 flock -n 9 || exit 0
 
 shopt -s nullglob
-walls=("$dir"/*.{jpg,jpeg,png,webp})
+walls=("$dir"/*.{jpg,jpeg,png,webp,mp4,webm,mkv,mov,gif})
 (( ${#walls[@]} )) || exit 1
 
+# Videos are applied through a poster frame (named <video-stem>-<hash>.jpg),
+# so match on the stem as well as the exact name.
 cur=$(basename "$(readlink "$HOME/Pictures/wallpapers/wall.png" 2>/dev/null)")
 idx=-1
 for i in "${!walls[@]}"; do
-    [[ $(basename "${walls[$i]}") == "$cur" ]] && idx=$i && break
+    b=$(basename "${walls[$i]}")
+    [[ $b == "$cur" || $cur == "${b%.*}-"*.jpg ]] && idx=$i && break
 done
 
 n=${#walls[@]}
@@ -33,4 +36,11 @@ else
     idx=$(( (idx + 1) % n ))
 fi
 
-"$HOME/.local/bin/aether-run" --generate "${walls[$idx]}"
+pick=${walls[$idx]}
+case ${pick,,} in
+    *.mp4|*.webm|*.mkv|*.mov|*.gif)
+        # Aether needs a still to extract colors from; livewall makes one and
+        # links the video so the post-apply hook plays it.
+        pick=$("$HOME/.local/bin/livewall" poster "$pick") || exit 1 ;;
+esac
+"$HOME/.local/bin/aether-run" --generate "$pick"

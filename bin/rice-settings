@@ -4,7 +4,7 @@
 One libadwaita window for everything the rice lets you tune, without
 editing files by hand:
 
-  Appearance   theme, random / from-wallpaper, wallpaper cycling
+  Appearance   theme, random / from-wallpaper, wallpaper cycling, live wallpaper
   Look & feel  gaps, borders, rounding, blur, animations, opacity
                -> ~/.config/hypr-rice/look.lua (read by hyprland.lua)
   Schedule     day/night themes and times -> ~/.config/hypr-rice/schedule
@@ -248,8 +248,28 @@ class Settings(Adw.Application):
         row.add_suffix(box)
         grp.add(row)
         row = Adw.ActionRow(title="Add your own",
-                            subtitle="Drop images into the theme's folder; they're picked up automatically")
+                            subtitle="Drop images or videos (.mp4 .webm .gif) into the theme's folder")
         row.add_suffix(self.button("Open folder", self.open_wall_folder))
+        grp.add(row)
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(
+            title="Live wallpaper",
+            description="Animated version of the current wallpaper -- snow, embers, rain, fireflies, "
+                        "petals or stardust to match the theme. Pauses behind fullscreen apps.")
+        live_on = (RICE / "live").exists() and "enabled=1" in (RICE / "live").read_text()
+        self.live_row = Adw.SwitchRow(title="Live wallpaper", subtitle="Super+Alt+W", active=live_on)
+        self.live_row.connect("notify::active", lambda r, _p: self._busy or
+                              run("livewall", "on" if r.get_active() else "off", background=True))
+        grp.add(self.live_row)
+        row = Adw.ActionRow(title="Prepare this theme",
+                            subtitle="Render every wallpaper of the active theme now (~10-40 s each), "
+                                     "so switching never waits")
+        row.add_suffix(self.button("Render", lambda: (run("livewall", "prerender", background=True),
+                                                      self.toast("Rendering in the background…"))))
+        grp.add(row)
+        row = Adw.ActionRow(title="Pause / resume playback")
+        row.add_suffix(self.button("Pause", lambda: run("livewall", "pause", background=True)))
         grp.add(row)
         page.add(grp)
         return page

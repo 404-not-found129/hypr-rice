@@ -33,10 +33,10 @@ PACMAN_DEPS=(
   fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
   rofi git base-devel
   playerctl brightnessctl hyprsunset wf-recorder slurp jq libnotify
-  bluez bluez-utils blueman libadwaita
+  bluez bluez-utils blueman libadwaita ffmpeg
 )
 AUR_DEPS=(
-  aether walker-bin wlogout
+  aether walker-bin wlogout mpvpaper
   elephant-bin elephant-desktopapplications-bin elephant-runner-bin
   elephant-calc-bin elephant-clipboard-bin elephant-files-bin
   elephant-menus-bin elephant-providerlist-bin elephant-symbols-bin

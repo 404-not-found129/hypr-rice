@@ -66,6 +66,7 @@ Press **`Super+/`** for the full, searchable list (read live from your
 | `Super+Ctrl+T` | Theme from the current wallpaper (auto palette) |
 | `Super+←/→` | Previous / next wallpaper *within the current theme* |
 | `Super+Shift+W` | Random wallpaper from the current theme |
+| `Super+Alt+W` | Live wallpaper on/off |
 | `Super+N` | Night light on/off (hyprsunset) |
 | `Super+Shift+R` / `Super+Alt+R` | Record a region / the screen (press again to stop) |
 | `Super+.` | Emoji & symbol picker |
@@ -79,6 +80,23 @@ Press **`Super+/`** for the full, searchable list (read live from your
 
 ## Extras
 
+- **Live wallpapers.** Turn on with `Super+Alt+W`, the bar's quick drawer,
+  or the settings app. Any wallpaper becomes a seamless 12 s loop: the
+  untouched image with a theme-matched particle layer -- snow (nord,
+  god-of-war), embers (elden-ring, ashen-flame), rain (cyberpunk,
+  tokyo-night), fireflies (everforest, fallout), petals (kanagawa,
+  rose-pine, latte) or stardust (the rest) -- tinted from the palette.
+  Rendered once per wallpaper (10-40 s, in the background, cached in
+  `~/.cache/hypr-rice/live/`) and played with
+  [mpvpaper](https://github.com/GhostNaN/mpvpaper), which pauses behind
+  fullscreen apps. `livewall prerender` prepares a whole theme up front.
+  You can also drop real videos (`.mp4 .webm .mkv .mov .gif`) into a
+  theme's collection: wallpaper cycling plays them, with colors taken from
+  a poster frame.
+- **Clean bar.** Three floating islands (workspaces / clock + media /
+  status). Status is icon-only with details in tooltips; tray, quick toggles
+  (theme, live wallpaper, night light, caffeine, settings) and system stats
+  (cpu, memory, brightness) sit in drawers that open on hover.
 - **Settings app (`Super+,`, or right-click the bar logo).** One window for
   the theme and wallpaper, gaps / borders / rounding / blur / animations /
   opacity (applied live), the day/night schedule, night-light temperature, a

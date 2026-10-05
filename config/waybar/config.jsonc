@@ -1,33 +1,28 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 34,
-    "margin-top": 8,
-    "margin-left": 12,
-    "margin-right": 12,
-    "spacing": 0,
+    "height": 32,
+    "margin-top": 6,
+    "margin-left": 10,
+    "margin-right": 10,
+    "spacing": 4,
     "modules-left": [
         "custom/logo",
-        "hyprland/workspaces",
-        "hyprland/window"
+        "hyprland/workspaces"
     ],
     "modules-center": [
         "clock",
         "mpris"
     ],
     "modules-right": [
-        "tray",
         "custom/recording",
-        "idle_inhibitor",
-        "custom/nightlight",
-        "cpu",
-        "memory",
-        "backlight",
+        "group/tray",
+        "group/quick",
+        "group/system",
         "pulseaudio",
         "bluetooth",
         "network",
         "battery",
-        "custom/theme",
         "custom/notifications",
         "custom/power"
     ],
@@ -49,11 +44,6 @@
         "persistent-workspaces": {
             "*": 5
         }
-    },
-    "hyprland/window": {
-        "format": "{}",
-        "max-length": 45,
-        "separate-outputs": true
     },
     "clock": {
         "format": "󰔟  {:%H:%M}",
@@ -84,8 +74,8 @@
         "tooltip-format": "{used:0.1f} GiB / {total:0.1f} GiB"
     },
     "pulseaudio": {
-        "format": "{icon}  {volume}%",
-        "format-muted": "󰝟  muted",
+        "format": "{icon}",
+        "format-muted": "󰝟",
         "format-icons": {
             "default": [
                 "󰁙",
@@ -95,15 +85,18 @@
         },
         "on-click": "pavucontrol",
         "on-click-right": "pamixer -t",
-        "scroll-step": 5
+        "scroll-step": 5,
+        "tooltip-format": "Volume {volume}%  ·  {desc}"
     },
     "network": {
-        "format-wifi": "󰖩  {essid}",
-        "format-ethernet": "󰈀  wired",
-        "format-disconnected": "󰖪  offline",
+        "format-wifi": "󰖩",
+        "format-ethernet": "󰈀",
+        "format-disconnected": "󰖪",
         "tooltip-format": "{ifname}: {ipaddr}\n↓ {bandwidthDownBits}  ↑ {bandwidthUpBits}",
         "on-click": "nm-connection-editor",
-        "interval": 5
+        "interval": 5,
+        "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}\n↓ {bandwidthDownBits}  ↑ {bandwidthUpBits}",
+        "tooltip-format-ethernet": "{ifname}: {ipaddr}\n↓ {bandwidthDownBits}  ↑ {bandwidthUpBits}"
     },
     "custom/notifications": {
         "format": "{icon}",
@@ -132,7 +125,7 @@
             "title",
             "artist"
         ],
-        "dynamic-len": 36,
+        "dynamic-len": 28,
         "status-icons": {
             "playing": "󰐊",
             "paused": "󰏤",
@@ -181,7 +174,7 @@
         "format": "󰂯",
         "format-disabled": "󰂲",
         "format-off": "󰂲",
-        "format-connected": "󰂱  {num_connections}",
+        "format-connected": "󰂱",
         "format-no-controller": "",
         "tooltip-format-connected": "{device_enumerate}",
         "tooltip-format-enumerate-connected": "{device_alias}",
@@ -192,9 +185,9 @@
             "warning": 25,
             "critical": 12
         },
-        "format": "{icon}  {capacity}%",
-        "format-charging": "󰂄  {capacity}%",
-        "format-plugged": "󰚥  {capacity}%",
+        "format": "{icon}",
+        "format-charging": "󰂄",
+        "format-plugged": "󰚥",
         "format-icons": [
             "󰁺",
             "󰁼",
@@ -202,15 +195,80 @@
             "󰂀",
             "󰁹"
         ],
-        "tooltip-format": "{timeTo}  ·  {power:.1f} W"
+        "tooltip-format": "{capacity}%  ·  {timeTo}"
     },
     "custom/theme": {
         "exec": "cat ~/.config/aether/current-theme 2>/dev/null || echo auto",
         "interval": "once",
-        "format": "󰏘  {}",
-        "tooltip-format": "Theme: {} -- click: picker · right-click: random · middle: from wallpaper",
+        "format": "󰏘",
+        "tooltip-format": "Theme: {} · click: picker · right: random · middle: from wallpaper",
         "on-click": "~/.local/bin/theme-picker",
         "on-click-right": "~/.local/bin/themectl random",
-        "on-click-middle": "~/.local/bin/themectl auto"
+        "on-click-middle": "~/.local/bin/themectl auto",
+        "tooltip": true
+    },
+    "group/tray": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/tray-toggle",
+            "tray"
+        ],
+        "drawer": {
+            "transition-duration": 250,
+            "children-class": "drawer-child",
+            "transition-left-to-right": false
+        }
+    },
+    "custom/tray-toggle": {
+        "format": "󰅁",
+        "tooltip": true,
+        "tooltip-format": "Tray (hover)"
+    },
+    "group/quick": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/theme",
+            "custom/livewall",
+            "custom/nightlight",
+            "idle_inhibitor",
+            "custom/settings"
+        ],
+        "drawer": {
+            "transition-duration": 250,
+            "children-class": "drawer-child",
+            "transition-left-to-right": false
+        }
+    },
+    "custom/settings": {
+        "format": "󰒓",
+        "tooltip-format": "Settings",
+        "on-click": "~/.local/bin/rice-settings"
+    },
+    "group/system": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/system-toggle",
+            "cpu",
+            "memory",
+            "backlight"
+        ],
+        "drawer": {
+            "transition-duration": 250,
+            "children-class": "drawer-child",
+            "transition-left-to-right": false
+        }
+    },
+    "custom/system-toggle": {
+        "format": "󰊚",
+        "tooltip-format": "System (hover)",
+        "on-click": "kitty btop"
+    },
+    "custom/livewall": {
+        "exec": "~/.local/bin/livewall status",
+        "return-type": "json",
+        "interval": "once",
+        "signal": 11,
+        "on-click": "~/.local/bin/livewall toggle",
+        "on-click-right": "~/.local/bin/livewall pause"
     }
 }

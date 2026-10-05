@@ -1,0 +1,324 @@
+#!/usr/bin/env python3
+"""Live (animated) wallpapers for hypr-rice.
+
+Two kinds of live wallpaper, both played with mpvpaper on every monitor:
+
+  * Generated: any still gets a seamless 12 s loop -- the untouched image
+    with a theme-matched particle layer drifting over it (snow, embers,
+    rain, fireflies, petals, stardust) and a slow light "breath". Made
+    once per wallpaper with ffmpeg, cached in ~/.cache/hypr-rice/live/.
+    Played only while live mode is on.
+  * Your own videos: drop .mp4/.webm/.mkv/.mov/.gif into a theme's
+    collection. wallcycle makes a poster frame for Aether's colors and
+    links the video here, so it always plays when it's the wallpaper.
+
+  livewall on | off | toggle   live mode (also in rice-settings)
+  livewall sync                start/stop to match the current wallpaper
+                               (called from Aether's post-apply hook)
+  livewall pause | resume     pause toggles
+  livewall status              JSON for waybar
+  livewall make <image> [effect]   pre-render one wallpaper
+  livewall prerender [theme]       pre-render every still of a theme (background)
+  livewall poster <video>          print the poster path (makes it if needed)
+"""
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+HOME = Path.home()
+CACHE = HOME / ".cache/hypr-rice/live"
+POSTERS = HOME / ".cache/hypr-rice/live-posters"
+CONF = HOME / ".config/hypr-rice/live"
+STATE = HOME / ".config/aether/current-theme"
+BACKGROUNDS = HOME / ".config/aether/theme/backgrounds"
+COLORS = HOME / ".config/aether/theme/colors.toml"
+SOCK = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "hypr-rice-livewall.sock"
+VIDEO_EXT = {".mp4", ".webm", ".mkv", ".mov", ".gif"}
+
+W, H, FPS, SECONDS = 2560, 1440, 24, 12
+N = FPS * SECONDS  # frames per loop; particle speeds are k/N so they wrap exactly
+
+# effect: (layers, tint source, fallback tint)
+# layer: (low-res divisor, density, blur sigma, gain, dx turns/loop, dy turns/loop, brightness)
+EFFECTS = {
+    "snow":      ([(2, 0.9992, 1.3, 2.2, -1, -1, 0.8), (7, 0.9986, 3.5, 2.6, -1, -2, 1.0)], None, "#e8f0ff"),
+    "embers":    ([(2, 0.9993, 1.2, 2.5, 1, 2, 0.8), (6, 0.9988, 2.8, 2.8, 1, 3, 1.0)], "accent", "#ff8a3d"),
+    "rain":      ([(1, 0.9990, 0.8, 2.0, 0, -6, 0.6), (2, 0.9992, 1.0, 2.2, 0, -9, 0.8)], "cursor", "#9fc7ff"),
+    "fireflies": ([(4, 0.9990, 3.0, 3.0, 1, 1, 0.9), (8, 0.9984, 4.5, 3.0, -1, 1, 1.0)], "accent", "#d6f07a"),
+    "petals":    ([(3, 0.9991, 2.0, 2.4, -2, -1, 0.8), (7, 0.9987, 3.8, 2.6, -2, -2, 1.0)], "magenta", "#f2a7c0"),
+    "stardust":  ([(1, 0.9994, 0.9, 2.4, 1, 0, 0.7), (3, 0.9991, 1.8, 2.6, 1, 0, 0.9)], "cursor", "#ffffff"),
+}
+# rain streaks: stretch dots vertically
+STREAK = {"rain": 14}
+
+THEME_EFFECT = {
+    "nord": "snow", "god-of-war": "snow",
+    "elden-ring": "embers", "ashen-flame": "embers",
+    "cyberpunk-2077": "rain", "tokyo-night": "rain",
+    "everforest": "fireflies", "fallout": "fireflies",
+    "kanagawa": "petals", "rose-pine": "petals", "catppuccin-latte": "petals",
+    "dracula": "stardust", "catppuccin-mocha": "stardust", "gruvbox": "stardust",
+}
+
+
+def notify(title, body=""):
+    subprocess.run(["notify-send", "-a", "hypr-rice", "-t", "3000", title, body],
+                   capture_output=True)
+
+
+def enabled():
+    return CONF.exists() and re.search(r"^enabled=1$", CONF.read_text(), re.M) is not None
+
+
+def set_enabled(on):
+    CONF.parent.mkdir(parents=True, exist_ok=True)
+    CONF.write_text(f"# live wallpaper mode -- toggled by `livewall on|off`\nenabled={1 if on else 0}\n")
+
+
+def palette():
+    if not COLORS.exists():
+        return {}
+    return dict(re.findall(r'^(\w+)\s*=\s*"([^"]*)"', COLORS.read_text(), re.M))
+
+
+def current_still():
+    """The wallpaper Aether applied most recently."""
+    files = sorted(BACKGROUNDS.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True) if BACKGROUNDS.is_dir() else []
+    return files[0] if files else None
+
+
+def live_for(still):
+    """Live counterpart of a still: a linked user video, or a generated loop."""
+    return CACHE / f"{still.stem}.mp4"
+
+
+def is_user_video(live):
+    return live.is_symlink()
+
+
+# ------------------------------------------------------------- playback --
+def player_running():
+    return subprocess.run(["pgrep", "-x", "mpvpaper"], capture_output=True).returncode == 0
+
+
+def playing_path():
+    p = CACHE / ".playing"
+    return p.read_text().strip() if p.exists() else ""
+
+
+def stop():
+    subprocess.run(["pkill", "-x", "mpvpaper"], capture_output=True)
+    (CACHE / ".playing").unlink(missing_ok=True)
+
+
+def play(video):
+    if not shutil.which("mpvpaper"):
+        notify("Live wallpaper", "mpvpaper is not installed (yay -S mpvpaper)")
+        return
+    if player_running() and playing_path() == str(video):
+        return
+    stop()
+    opts = ("no-audio loop hwdec=auto panscan=1.0 "
+            f"input-ipc-server={SOCK} really-quiet")
+    # -p: pause while the wallpaper is fully covered (fullscreen apps)
+    subprocess.Popen(["setsid", "mpvpaper", "-p", "-o", opts, "*", str(video)],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    CACHE.mkdir(parents=True, exist_ok=True)
+    (CACHE / ".playing").write_text(str(video))
+
+
+def ipc(command):
+    import socket
+    try:
+        s = socket.socket(socket.AF_UNIX)
+        s.connect(str(SOCK))
+        s.sendall((json.dumps({"command": command}) + "\n").encode())
+        s.close()
+    except OSError:
+        pass
+
+
+# ----------------------------------------------------------- generation --
+def tint_hex(effect):
+    _, key, fallback = EFFECTS[effect]
+    col = palette().get(key, "") if key else ""
+    return col if re.fullmatch(r"#[0-9a-fA-F]{6}", col or "") else fallback
+
+
+def texture(div, density, sigma, gain, streak, out):
+    """Sparse soft dots: random noise thresholded at low resolution (bigger
+    dots for bigger divisors), upscaled, blurred, brightened. ImageMagick's
+    noise is used because ffmpeg's geq random() lines dots up in columns."""
+    w, h = W // div, H // div
+    keep = (1 - density) * 100            # % of pixels that become dots
+    cmd = ["magick", "-size", f"{w}x{h}", "xc:black", "+noise", "Random",
+           "-channel", "R", "-separate", "-threshold", f"{100 - keep:.4f}%",
+           "-sample", f"{W}x{H}!"]
+    if streak:
+        cmd += ["-morphology", "Convolve", f"Blur:0x{streak},90"]
+    cmd += ["-blur", f"0x{sigma}", "-evaluate", "multiply", f"{gain * (3 if streak else 1)}",
+            "-depth", "8", str(out)]
+    subprocess.run(cmd, check=True)
+
+
+def make(image, effect=None, theme=None):
+    image = Path(image)
+    theme = theme or (STATE.read_text().strip() if STATE.exists() else "")
+    effect = effect or THEME_EFFECT.get(theme, "stardust")
+    layers, _, _ = EFFECTS[effect]
+    CACHE.mkdir(parents=True, exist_ok=True)
+    out = live_for(image)
+    tmp = CACHE / f".{out.stem}.{os.getpid()}"
+    tmp.mkdir(exist_ok=True)
+    try:
+        h = tint_hex(effect).lstrip("#")
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        inputs, chains = ["-loop", "1", "-i", str(image)], []
+        chains.append(f"[0]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                      f"eq=brightness='0.015*sin(2*PI*t/{SECONDS})':eval=frame,format=gbrp[base]")
+        for i, (div, dens, sig, gain, dx, dy, bright) in enumerate(layers, start=1):
+            tex = tmp / f"l{i}.png"
+            texture(div, dens, sig, gain, STREAK.get(effect, 0), tex)
+            inputs += ["-loop", "1", "-i", str(tex)]
+            chains.append(f"[{i}]format=gbrp,scroll=horizontal={dx / N:.8f}:vertical={dy / N:.8f},"
+                          f"colorchannelmixer=rr={r * bright:.3f}:gg={g * bright:.3f}:bb={b * bright:.3f}[p{i}]")
+        acc = "p1"
+        for i in range(2, len(layers) + 1):
+            chains.append(f"[{acc}][p{i}]blend=all_mode=lighten[m{i}]")
+            acc = f"m{i}"
+        chains.append(f"[base][{acc}]blend=all_mode=screen,format=yuv420p")
+        part = tmp / "out.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(chains),
+                        "-r", str(FPS), "-frames:v", str(N), "-c:v", "libx264", "-preset", "veryfast",
+                        "-crf", "22", "-movflags", "+faststart", str(part)], check=True)
+        part.replace(out)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return out
+
+
+def poster(video):
+    """Still frame for Aether to extract colors from (cached by path+mtime)."""
+    video = Path(video)
+    POSTERS.mkdir(parents=True, exist_ok=True)
+    key = hashlib.md5(f"{video.resolve()}:{video.stat().st_mtime_ns}".encode()).hexdigest()[:10]
+    out = POSTERS / f"{video.stem}-{key}.jpg"
+    if not out.exists():
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "1", "-i", str(video),
+                        "-frames:v", "1", "-q:v", "2", str(out)], check=True)
+    # link the video as this poster's live counterpart (always plays)
+    CACHE.mkdir(parents=True, exist_ok=True)
+    link = CACHE / f"{out.stem}.mp4"
+    if link.is_symlink() or link.exists():
+        link.unlink()
+    link.symlink_to(video.resolve())
+    return out
+
+
+# ----------------------------------------------------------------- sync --
+def sync():
+    still = current_still()
+    if still is None:
+        return stop()
+    live = live_for(still)
+    if live.exists() and is_user_video(live):
+        return play(live)
+    if not enabled():
+        return stop()
+    if live.exists():
+        return play(live)
+    # first time for this wallpaper: render in the background, then play
+    stop()
+    lock = CACHE / f".{still.stem}.making"
+    if lock.exists():
+        return
+    CACHE.mkdir(parents=True, exist_ok=True)
+    lock.touch()
+    pid = os.fork()
+    if pid:
+        return
+    os.setsid()
+    try:
+        notify("Live wallpaper", "Rendering a live version of this wallpaper…")
+        make(still)
+        if current_still() == still and enabled():
+            play(live)
+    except subprocess.CalledProcessError:
+        notify("Live wallpaper", "Rendering failed")
+    finally:
+        lock.unlink(missing_ok=True)
+        os._exit(0)
+
+
+def prerender(theme=None):
+    theme = theme or (STATE.read_text().strip() if STATE.exists() else "")
+    coll = HOME / "Pictures/wallpapers/collections" / theme
+    stills = [p for p in sorted(coll.glob("*"))
+              if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"} and not live_for(p).exists()]
+    if not stills:
+        notify("Live wallpaper", f"All {theme} wallpapers are already rendered")
+        return
+    if os.fork():
+        return
+    os.setsid()
+    notify("Live wallpaper", f"Rendering {len(stills)} {theme} wallpapers in the background…")
+    done = 0
+    for p in stills:
+        try:
+            make(p, theme=theme)
+            done += 1
+        except subprocess.CalledProcessError:
+            pass
+    notify("Live wallpaper", f"{done}/{len(stills)} {theme} wallpapers ready")
+    os._exit(0)
+
+
+def status():
+    if player_running():
+        print(json.dumps({"text": "\U000f093a", "class": "on",
+                          "tooltip": "Live wallpaper on · click: off · right-click: pause"}, ensure_ascii=False))
+    elif enabled():
+        print(json.dumps({"text": "\U000f093a", "class": "pending", "tooltip": "Live wallpaper: preparing…"}, ensure_ascii=False))
+    else:
+        print(json.dumps({"text": "\U000f093a", "class": "off", "tooltip": "Live wallpaper off · click: on"}, ensure_ascii=False))
+
+
+def bar():
+    subprocess.run(["pkill", "-RTMIN+11", "waybar"], capture_output=True)
+
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else "status"
+    if cmd == "on":
+        set_enabled(True); sync(); bar()
+    elif cmd == "off":
+        set_enabled(False); sync(); bar()
+    elif cmd == "toggle":
+        set_enabled(not enabled()); sync(); bar()
+    elif cmd == "sync":
+        sync(); bar()
+    elif cmd == "pause":
+        ipc(["cycle", "pause"])
+    elif cmd == "resume":
+        ipc(["set_property", "pause", False])
+    elif cmd == "status":
+        status()
+    elif cmd == "make" and len(argv) > 2:
+        print(make(argv[2], argv[3] if len(argv) > 3 else None))
+    elif cmd == "prerender":
+        prerender(argv[2] if len(argv) > 2 else None)
+    elif cmd == "poster" and len(argv) > 2:
+        print(poster(argv[2]))
+    else:
+        print(__doc__)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
