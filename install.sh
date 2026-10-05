@@ -44,7 +44,13 @@ AUR_DEPS=(
 )
 
 info "Installing official packages (pacman)..."
-sudo pacman -S --needed --noconfirm "${PACMAN_DEPS[@]}"
+# Only what isn't already satisfied -- pacman -T honors "provides", so an
+# equivalent package you already have (e.g. Omarchy's
+# ttf-jetbrains-mono-nerd-basic) isn't fought over with a conflict.
+mapfile -t missing < <(pacman -T "${PACMAN_DEPS[@]}" || true)
+if (( ${#missing[@]} )); then
+  sudo pacman -S --needed --noconfirm "${missing[@]}"
+fi
 
 aur_helper=""
 for h in yay paru; do command -v "$h" >/dev/null && aur_helper=$h && break; done
