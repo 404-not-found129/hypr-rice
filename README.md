@@ -202,6 +202,13 @@ the *aesthetic* section unless you list it as `games` in
 
 ## Troubleshooting
 
+- **Theme switcher records the theme but nothing on screen changes (Omarchy
+  installed)** -- Aether 4.x applies themes as native Omarchy themes whenever
+  it sees Omarchy's commands, skipping this rice's templates and post-apply
+  hook. All rice scripts call `bin/aether-run`, which runs Aether with the
+  `omarchy*` commands hidden so it stays in standalone mode. If you launch the
+  Aether GUI directly, start it as `aether-run` for the same reason.
+
 - **Folder icons stop changing color** — a `papirus-icon-theme` package update
   reset the permissions. Re-run:
   `sudo setfacl -R -m u:$USER:rwX /usr/share/icons/Papirus*`

@@ -161,7 +161,7 @@ ln -sf "$HOME/Pictures/wallpapers/collections/elden-ring/"* "$HOME/Wallpapers/" 
 # so nothing references a missing file before the first Super+T apply.
 if [[ -s $default_wall ]]; then
   info "Pre-rendering the default theme's color files..."
-  aether --generate "$default_wall" --no-apply >/dev/null 2>&1 \
+  "$HOME/.local/bin/aether-run" --generate "$default_wall" --no-apply >/dev/null 2>&1 \
     || warn "Could not pre-render theme files — press Super+T after login to apply a theme."
 fi
 

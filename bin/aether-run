@@ -1,0 +1,31 @@
+#!/bin/bash
+# Run aether in standalone mode, even on a system with Omarchy installed.
+#
+# Aether (4.x) notices Omarchy's commands on PATH and then applies themes as
+# a native Omarchy theme (~/.config/omarchy/themes/aether, handed to
+# omarchy-theme-set) -- it never renders ~/.config/aether/theme or runs this
+# rice's post-apply hook, so nothing on screen changes. Hiding the omarchy*
+# commands from PATH for aether's process tree puts it back in standalone
+# mode. On systems without Omarchy this just execs aether.
+#
+# The hidden-PATH is a cached directory of symlinks to everything in
+# /usr/bin except omarchy*, rebuilt whenever /usr/bin changes.
+
+real=/usr/bin/aether
+
+if ! compgen -G "/usr/bin/omarchy*" >/dev/null; then
+    exec "$real" "$@"
+fi
+
+farm="$HOME/.cache/hypr-rice/no-omarchy-bin"
+if [[ ! -d $farm || /usr/bin -nt $farm ]]; then
+    tmp="$farm.tmp.$$"
+    mkdir -p "$tmp"
+    for f in /usr/bin/*; do
+        case ${f##*/} in omarchy*) ;; *) ln -s "$f" "$tmp/" ;; esac
+    done
+    rm -rf "$farm"
+    mv "$tmp" "$farm"
+fi
+
+PATH="$farm:$HOME/.local/bin" exec "$real" "$@"

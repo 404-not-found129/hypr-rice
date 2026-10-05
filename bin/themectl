@@ -57,7 +57,7 @@ apply() {
     # Record the theme BEFORE applying: the post-apply hook reads it mid-apply
     # (waybar icons, folder tint, app icons), and wallcycle scopes to it.
     printf '%s' "$name" > "$STATE"
-    aether --apply-blueprint "$name"
+    "$HOME/.local/bin/aether-run" --apply-blueprint "$name" || { echo "themectl: aether failed to apply $name" >&2; exit 1; }
 
     # The Aether GUI's local-wallpaper browser scans ~/Wallpapers: fill it
     # with links to this theme's collection so it only shows these.
@@ -92,7 +92,7 @@ case "${1:-}" in
     set)      apply "${2:?usage: themectl set <theme>}" ;;
     auto)
         lock
-        aether --generate "$(readlink -f "$HOME/Pictures/wallpapers/wall.png")"
+        "$HOME/.local/bin/aether-run" --generate "$(readlink -f "$HOME/Pictures/wallpapers/wall.png")"
         ;;
     random)
         cur=$(current)

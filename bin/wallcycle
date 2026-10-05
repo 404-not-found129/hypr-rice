@@ -33,4 +33,4 @@ else
     idx=$(( (idx + 1) % n ))
 fi
 
-aether --generate "${walls[$idx]}"
+"$HOME/.local/bin/aether-run" --generate "${walls[$idx]}"
