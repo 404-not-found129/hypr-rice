@@ -31,7 +31,7 @@ PACMAN_DEPS=(
   network-manager-applet thunar pavucontrol pamixer wl-clipboard
   papirus-icon-theme breeze-cursors xorg-xcursorgen ttf-jetbrains-mono-nerd
   fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
-  rofi-wayland git base-devel
+  rofi git base-devel
   playerctl brightnessctl hyprsunset wf-recorder slurp jq libnotify
   bluez bluez-utils blueman
 )
