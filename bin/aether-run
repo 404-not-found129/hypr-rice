@@ -28,4 +28,5 @@ if [[ ! -d $farm || /usr/bin -nt $farm ]]; then
     mv "$tmp" "$farm"
 fi
 
-PATH="$farm:$HOME/.local/bin" exec "$real" "$@"
+# /usr/local/bin too: locally built tools (e.g. mpvpaper) used by the hook
+PATH="$farm:/usr/local/bin:$HOME/.local/bin" exec "$real" "$@"

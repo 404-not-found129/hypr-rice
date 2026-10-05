@@ -62,8 +62,17 @@ if [[ -z $aur_helper ]]; then
   rm -rf "$tmp"
   aur_helper=yay
 fi
+# Skip AUR packages whose program is already on PATH (e.g. built by hand
+# into /usr/local/bin) -- installing them again would only duplicate it.
+aur_missing=()
+for p in "${AUR_DEPS[@]}"; do
+  case $p in
+    mpvpaper|wlogout|aether) command -v "$p" >/dev/null && continue ;;
+  esac
+  aur_missing+=("$p")
+done
 info "Installing AUR packages ($aur_helper)..."
-"$aur_helper" -S --needed --noconfirm "${AUR_DEPS[@]}"
+"$aur_helper" -S --needed --noconfirm "${aur_missing[@]}"
 
 # ------------------------------------------------------------- configs ------
 backup() { # backup <path>
