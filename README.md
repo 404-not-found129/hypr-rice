@@ -81,18 +81,28 @@ Press **`Super+/`** for the full, searchable list (read live from your
 ## Extras
 
 - **Live wallpapers.** Turn on with `Super+Alt+W`, the bar's quick drawer,
-  or the settings app. Any wallpaper becomes a seamless 12 s loop: the
-  untouched image with a theme-matched particle layer -- snow (nord,
-  god-of-war), embers (elden-ring, ashen-flame), rain (cyberpunk,
-  tokyo-night), fireflies (everforest, fallout), petals (kanagawa,
-  rose-pine, latte) or stardust (the rest) -- tinted from the palette.
-  Rendered once per wallpaper (10-40 s, in the background, cached in
-  `~/.cache/hypr-rice/live/`) and played with
-  [mpvpaper](https://github.com/GhostNaN/mpvpaper), which pauses behind
-  fullscreen apps. `livewall prerender` prepares a whole theme up front.
-  You can also drop real videos (`.mp4 .webm .mkv .mov .gif`) into a
-  theme's collection: wallpaper cycling plays them, with colors taken from
-  a poster frame.
+  or the settings app. Playback is [mpvpaper](https://github.com/GhostNaN/mpvpaper)
+  (pauses behind fullscreen apps), in this order of preference:
+  1. **AI-animated** -- `livewall-ai` sends each wallpaper to
+     [Higgsfield](https://docs.higgsfield.ai) (Wan 2.7 image-to-video) with
+     the wallpaper as both first and last frame, so the clip loops
+     seamlessly, and a theme-specific prompt for gentle ambient motion
+     (drifting embers, snowfall, rolling waves, neon flicker...) with a
+     static camera. Uses credits on **your** Higgsfield account: put
+     `HF_API_KEY_ID=` / `HF_API_KEY_SECRET=` in
+     `~/.config/hypr-rice/higgsfield` (`chmod 600`), then run
+     `livewall-ai` (active theme) or `livewall-ai --all`. It shows
+     Higgsfield's cost estimate for the batch and asks before generating;
+     interrupted runs resume without paying twice. Clips stay in
+     `~/.local/share/hypr-rice/live-ai/` (not in this repo).
+     `livewall-ai --status` shows progress per theme.
+  2. **Particle effect** fallback for wallpapers not animated yet: the
+     untouched image with theme-matched snow / embers / rain / fireflies /
+     petals / stardust, rendered locally with ffmpeg. `livewall effects off`
+     (or the settings switch) shows the plain still instead.
+  3. **Your own videos**: drop `.mp4 .webm .mkv .mov .gif` into a theme's
+     collection; wallpaper cycling plays them, with colors from a poster
+     frame.
 - **Clean bar.** Three floating islands (workspaces / clock + media /
   status). Status is icon-only with details in tooltips; tray, quick toggles
   (theme, live wallpaper, night light, caffeine, settings) and system stats

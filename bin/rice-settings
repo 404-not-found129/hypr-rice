@@ -255,16 +255,36 @@ class Settings(Adw.Application):
 
         grp = Adw.PreferencesGroup(
             title="Live wallpaper",
-            description="Animated version of the current wallpaper -- snow, embers, rain, fireflies, "
-                        "petals or stardust to match the theme. Pauses behind fullscreen apps.")
+            description="The current wallpaper, moving: AI-animated clips where you've made them, "
+                        "otherwise a theme-matched particle effect. Pauses behind fullscreen apps.")
         live_on = (RICE / "live").exists() and "enabled=1" in (RICE / "live").read_text()
         self.live_row = Adw.SwitchRow(title="Live wallpaper", subtitle="Super+Alt+W", active=live_on)
         self.live_row.connect("notify::active", lambda r, _p: self._busy or
                               run("livewall", "on" if r.get_active() else "off", background=True))
         grp.add(self.live_row)
-        row = Adw.ActionRow(title="Prepare this theme",
-                            subtitle="Render every wallpaper of the active theme now (~10-40 s each), "
-                                     "so switching never waits")
+        live_conf = (RICE / "live").read_text() if (RICE / "live").exists() else ""
+        self.fx_row = Adw.SwitchRow(
+            title="Particle effect fallback",
+            subtitle="Snow / embers / rain for wallpapers that aren't AI-animated yet",
+            active="effects=0" not in live_conf)
+        self.fx_row.connect("notify::active", lambda r, _p: self._busy or
+                            run("livewall", "effects", "on" if r.get_active() else "off", background=True))
+        grp.add(self.fx_row)
+
+        ai_dir = HOME / ".local/share/hypr-rice/live-ai"
+        n_ai = len(list(ai_dir.glob("*.mp4"))) if ai_dir.is_dir() else 0
+        row = Adw.ActionRow(
+            title="Animate with Higgsfield AI",
+            subtitle=f"Real motion made from each wallpaper ({n_ai} animated so far). "
+                     "Uses credits on your Higgsfield account; shows the cost and asks first.")
+        box = Gtk.Box(spacing=8)
+        box.append(self.button("This theme", lambda: self.ai_terminal([])))
+        box.append(self.button("All themes", lambda: self.ai_terminal(["--all"])))
+        row.add_suffix(box)
+        grp.add(row)
+
+        row = Adw.ActionRow(title="Prepare particle effects",
+                            subtitle="Render the fallback effect for every wallpaper of the active theme now")
         row.add_suffix(self.button("Render", lambda: (run("livewall", "prerender", background=True),
                                                       self.toast("Rendering in the background…"))))
         grp.add(row)
@@ -294,6 +314,14 @@ class Settings(Adw.Application):
             self.theme_row.set_selected(self.theme_names.index(cur))
             self._busy = False
         return False
+
+    def ai_terminal(self, extra):
+        """livewall-ai is interactive (cost estimate + confirmation), so it
+        runs in a terminal window rather than in the background."""
+        cmd = " ".join([str(BIN / "livewall-ai"), *extra])
+        subprocess.Popen(["setsid", "alacritty", "--title", "Animate wallpapers", "-e", "bash", "-c",
+                          f"{cmd}; echo; read -rp 'Press Enter to close'"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def wall_cmd(self, how):
         run("wallcycle", how, background=True)

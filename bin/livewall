@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """Live (animated) wallpapers for hypr-rice.
 
-Two kinds of live wallpaper, both played with mpvpaper on every monitor:
+Three kinds of live wallpaper, all played with mpvpaper on every monitor,
+in this order of preference:
 
-  * Generated: any still gets a seamless 12 s loop -- the untouched image
+  * AI-animated: real motion made from the still by Higgsfield
+    (`livewall-ai`), in ~/.local/share/hypr-rice/live-ai/. Played while
+    live mode is on.
+  * Particle effect (fallback until a wallpaper is animated): any still gets a seamless 12 s loop -- the untouched image
     with a theme-matched particle layer drifting over it (snow, embers,
     rain, fireflies, petals, stardust) and a slow light "breath". Made
     once per wallpaper with ffmpeg, cached in ~/.cache/hypr-rice/live/.
-    Played only while live mode is on.
+    Played while live mode is on, unless the fallback is turned off
+    (`livewall effects off`).
   * Your own videos: drop .mp4/.webm/.mkv/.mov/.gif into a theme's
     collection. wallcycle makes a poster frame for Aether's colors and
     links the video here, so it always plays when it's the wallpaper.
 
   livewall on | off | toggle   live mode (also in rice-settings)
+  livewall effects on | off    particle fallback for not-yet-animated wallpapers
   livewall sync                start/stop to match the current wallpaper
                                (called from Aether's post-apply hook)
   livewall pause | resume     pause toggles
@@ -32,6 +38,7 @@ from pathlib import Path
 
 HOME = Path.home()
 CACHE = HOME / ".cache/hypr-rice/live"
+AI = HOME / ".local/share/hypr-rice/live-ai"
 POSTERS = HOME / ".cache/hypr-rice/live-posters"
 CONF = HOME / ".config/hypr-rice/live"
 STATE = HOME / ".config/aether/current-theme"
@@ -71,13 +78,30 @@ def notify(title, body=""):
                    capture_output=True)
 
 
+def conf():
+    vals = {"enabled": "0", "effects": "1"}
+    if CONF.exists():
+        vals.update(re.findall(r"^(\w+)=(\S*)$", CONF.read_text(), re.M))
+    return vals
+
+
+def write_conf(**kw):
+    vals = {**conf(), **{k: "1" if v else "0" for k, v in kw.items()}}
+    CONF.parent.mkdir(parents=True, exist_ok=True)
+    CONF.write_text("# live wallpaper settings -- `livewall on|off`, `livewall effects on|off`\n"
+                    + "".join(f"{k}={v}\n" for k, v in vals.items()))
+
+
 def enabled():
-    return CONF.exists() and re.search(r"^enabled=1$", CONF.read_text(), re.M) is not None
+    return conf()["enabled"] == "1"
+
+
+def effects_fallback():
+    return conf()["effects"] == "1"
 
 
 def set_enabled(on):
-    CONF.parent.mkdir(parents=True, exist_ok=True)
-    CONF.write_text(f"# live wallpaper mode -- toggled by `livewall on|off`\nenabled={1 if on else 0}\n")
+    write_conf(enabled=on)
 
 
 def palette():
@@ -93,8 +117,13 @@ def current_still():
 
 
 def live_for(still):
-    """Live counterpart of a still: a linked user video, or a generated loop."""
+    """Particle-effect loop (or linked user video) for a still."""
     return CACHE / f"{still.stem}.mp4"
+
+
+def ai_for(still):
+    """Higgsfield-animated clip for a still, if livewall-ai made one."""
+    return AI / f"{still.stem}.mp4"
 
 
 def is_user_video(live):
@@ -230,6 +259,10 @@ def sync():
         return play(live)
     if not enabled():
         return stop()
+    if ai_for(still).exists():
+        return play(ai_for(still))
+    if not effects_fallback():
+        return stop()
     if live.exists():
         return play(live)
     # first time for this wallpaper: render in the background, then play
@@ -300,6 +333,8 @@ def main(argv):
         set_enabled(False); sync(); bar()
     elif cmd == "toggle":
         set_enabled(not enabled()); sync(); bar()
+    elif cmd == "effects" and len(argv) > 2 and argv[2] in ("on", "off"):
+        write_conf(effects=argv[2] == "on"); sync(); bar()
     elif cmd == "sync":
         sync(); bar()
     elif cmd == "pause":

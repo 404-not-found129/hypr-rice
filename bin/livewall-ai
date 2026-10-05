@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+"""Animate wallpapers into real live wallpapers with Higgsfield (Wan 2.7).
+
+Each still is sent to Higgsfield's image-to-video model with the SAME image
+as first and last frame, so the clip loops seamlessly, and a prompt asking
+for gentle ambient motion (clouds, water, foliage, light, cloth) with a
+static camera. Results are saved to ~/.local/share/hypr-rice/live-ai/ and
+`livewall` plays them instead of the particle effect whenever they exist.
+
+Costs Higgsfield credits on YOUR account. Before generating anything it
+shows Higgsfield's own estimate for the whole batch and asks to confirm.
+Failed or moderated (nsfw) requests are not charged.
+
+Credentials (create them at https://console.higgsfield.ai), either as
+environment variables HF_API_KEY_ID / HF_API_KEY_SECRET, or in
+~/.config/hypr-rice/higgsfield (chmod 600):
+
+    HF_API_KEY_ID=...
+    HF_API_KEY_SECRET=...
+
+Usage:
+  livewall-ai                    animate the active theme's wallpapers
+  livewall-ai --theme nord       one theme
+  livewall-ai --all              every theme
+  livewall-ai --redo ...         regenerate even if a clip exists
+  livewall-ai --yes ...          skip the confirmation prompt
+  livewall-ai --status           how many wallpapers are animated per theme
+Options: --duration N (2-15, default 8)  --resolution 720p|1080p (default 1080p)
+"""
+import argparse
+import hashlib
+import json
+import os
+import random
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+HOME = Path.home()
+API = os.environ.get("HIGGSFIELD_API", "https://api.higgsfield.ai")  # override for testing
+MODEL = "wan/v2.7/image-to-video"
+OUT = HOME / ".local/share/hypr-rice/live-ai"
+PENDING = OUT / ".pending.json"   # request ids, so an interrupted run resumes without paying twice
+COLLECTIONS = HOME / "Pictures/wallpapers/collections"
+CREDS = HOME / ".config/hypr-rice/higgsfield"
+STATE = HOME / ".config/aether/current-theme"
+STILL_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+
+BASE_PROMPT = (
+    "Cinemagraph-style living wallpaper. Subtle, slow, natural ambient motion only: "
+    "{motion}. The camera is completely static: no zoom, no pan, no rotation. "
+    "Keep the composition, characters, colors, lighting and fine detail identical to the "
+    "image. Smooth, calm, seamlessly looping.")
+NEGATIVE = ("camera movement, zoom, pan, shaking, morphing, distorted faces, extra limbs, "
+            "new objects, text, watermark, flicker, fast motion, scene change")
+THEME_MOTION = {
+    "elden-ring": "drifting golden embers and motes, flickering firelight, cloth and hair moving in a light wind, slow clouds",
+    "ashen-flame": "rising embers, flickering flames and smoke, cloth moving in hot wind",
+    "god-of-war": "falling snow, drifting mist, rippling water, cloth and fur moving in cold wind",
+    "fallout": "drifting dust, flickering lights, slow moving clouds, gently swaying grass",
+    "cyberpunk-2077": "falling rain, flickering neon signs, drifting steam, subtle light reflections",
+    "tokyo-night": "flickering city lights, drifting clouds, gentle rain, rippling reflections",
+    "gruvbox": "slow drifting clouds, swaying foliage, warm flickering light",
+    "catppuccin-mocha": "softly drifting clouds, twinkling stars, gentle swaying",
+    "catppuccin-latte": "soft drifting clouds, gentle light shimmer, slowly moving pastel shapes",
+    "nord": "light snowfall, drifting mist, slowly moving clouds, aurora shimmer, rippling water",
+    "rose-pine": "slowly drifting clouds, shimmering water, soft glowing light",
+    "everforest": "leaves and grass swaying in a breeze, flowing water, drifting light rays",
+    "kanagawa": "rolling waves and sea spray, drifting clouds, swaying trees, flickering lanterns",
+    "dracula": "twinkling stars, drifting nebula, glowing lights pulsing slowly",
+}
+DEFAULT_MOTION = "drifting clouds, flowing water, swaying foliage, flickering light, gently moving hair and cloth"
+
+
+# ----------------------------------------------------------------- http --
+def creds():
+    kid, sec = os.environ.get("HF_API_KEY_ID"), os.environ.get("HF_API_KEY_SECRET")
+    if not (kid and sec) and CREDS.exists():
+        if CREDS.stat().st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            sys.exit(f"{CREDS} is readable by other users -- run: chmod 600 {CREDS}")
+        vals = dict(re.findall(r"^\s*(HF_API_KEY_(?:ID|SECRET))\s*=\s*\"?([^\"\s]+)", CREDS.read_text(), re.M))
+        kid, sec = vals.get("HF_API_KEY_ID"), vals.get("HF_API_KEY_SECRET")
+    if not (kid and sec):
+        sys.exit("Missing Higgsfield credentials. Create a key at https://console.higgsfield.ai, then\n"
+                 f"put these two lines in {CREDS} and run: chmod 600 {CREDS}\n\n"
+                 "    HF_API_KEY_ID=your-key-id\n    HF_API_KEY_SECRET=your-key-secret")
+    return f"Key {kid}:{sec}"
+
+
+AUTH = None
+
+
+def call(method, path_or_url, body=None, headers=None, retries=5):
+    url = path_or_url if path_or_url.startswith("http") else API + path_or_url
+    data = json.dumps(body).encode() if body is not None else None
+    hdrs = {"Authorization": AUTH, "Content-Type": "application/json", **(headers or {})}
+    delay = 2.0
+    for attempt in range(retries):
+        req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                raw = r.read()
+                return json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as e:
+            msg = e.read().decode(errors="replace")[:300]
+            if e.code == 401:
+                sys.exit("Higgsfield rejected the credentials (401).")
+            if e.code in (429, 500, 502, 503, 504) and attempt < retries - 1:
+                time.sleep(delay + random.uniform(0, 1))
+                delay = min(delay * 2, 30)
+                continue
+            raise RuntimeError(f"{method} {url.replace(API, '')}: HTTP {e.code} {msg}") from None
+        except urllib.error.URLError:
+            if attempt < retries - 1:
+                time.sleep(delay)
+                delay = min(delay * 2, 30)
+                continue
+            raise
+
+
+def upload(path):
+    """Downscale to <=1920px JPEG (plenty for a 1080p clip, much faster to
+    upload than 8K PNGs) and push it through a presigned URL."""
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tf:
+        tmp = Path(tf.name)
+    try:
+        subprocess.run(["magick", str(path), "-resize", "1920x1920>", "-quality", "92", str(tmp)], check=True)
+        up = call("POST", "/files/generate-upload-url", {"content_type": "image/jpeg"})
+        req = urllib.request.Request(up["upload_url"], data=tmp.read_bytes(), method="PUT",
+                                     headers=up.get("upload_headers") or {"Content-Type": "image/jpeg"})
+        with urllib.request.urlopen(req, timeout=120):
+            pass
+        return up["public_url"]
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+# ----------------------------------------------------------------- work --
+def stills(themes):
+    out = []
+    for t in themes:
+        d = COLLECTIONS / t
+        if d.is_dir():
+            out += [(t, p) for p in sorted(d.iterdir()) if p.suffix.lower() in STILL_EXT]
+    return out
+
+
+def target(still):
+    return OUT / f"{still.stem}.mp4"
+
+
+def body_for(theme, image_url, args):
+    return {
+        "image_url": image_url,
+        "end_image_url": image_url,          # same first/last frame -> seamless loop
+        "prompt": BASE_PROMPT.format(motion=THEME_MOTION.get(theme, DEFAULT_MOTION)),
+        "negative_prompt": NEGATIVE,
+        "duration": args.duration,
+        "resolution": args.resolution,
+        "seed": 4242,
+    }
+
+
+def load_pending():
+    try:
+        return json.loads(PENDING.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_pending(p):
+    PENDING.write_text(json.dumps(p, indent=1))
+
+
+def wait(status_url, timeout=1800):
+    delay, start = 3.0, time.time()
+    while time.time() - start < timeout:
+        r = call("GET", status_url)
+        if r.get("status") in ("completed", "failed", "nsfw", "canceled"):
+            return r
+        time.sleep(delay + random.uniform(0, 1))
+        delay = min(delay * 1.4, 15)
+    return {"status": "timeout"}
+
+
+def animate(theme, still, args, pending, lock):
+    key = str(still)
+    with lock:
+        req = pending.get(key)
+    if not req:
+        url = upload(still)
+        idem = hashlib.sha256(f"{still}:{still.stat().st_mtime_ns}:{args.duration}:{args.resolution}:{args.redo_nonce}".encode()).hexdigest()
+        r = call("POST", "/" + MODEL, body_for(theme, url, args), {"Idempotency-Key": idem})
+        req = {"status_url": r["status_url"], "request_id": r["request_id"]}
+        with lock:
+            pending[key] = req
+            save_pending(pending)
+    r = wait(req["status_url"])
+    with lock:
+        pending.pop(key, None)
+        save_pending(pending)
+    if r.get("status") != "completed":
+        return f"{r.get('status')}" + (f": {r.get('error')}" if r.get("error") else "")
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tf:
+        raw = Path(tf.name)
+    try:
+        urllib.request.urlretrieve(r["video"]["url"], raw)
+        # normalize for smooth looping playback: no audio, yuv420p, fast start
+        part = target(still).with_suffix(".part.mp4")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(raw), "-an", "-c:v", "libx264",
+                        "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                        str(part)], check=True)
+        part.replace(target(still))
+    finally:
+        raw.unlink(missing_ok=True)
+    return "ok"
+
+
+def status_report():
+    themes = sorted(p.name for p in COLLECTIONS.iterdir() if p.is_dir() and not p.is_symlink())
+    total = done = 0
+    for t in themes:
+        s = stills([t])
+        n = sum(target(p).exists() for _, p in s)
+        total += len(s)
+        done += n
+        print(f"  {t:<18} {n:>3} / {len(s)}")
+    print(f"  {'total':<18} {done:>3} / {total}")
+
+
+def main():
+    global AUTH
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("--theme")
+    ap.add_argument("--all", action="store_true")
+    ap.add_argument("--redo", action="store_true")
+    ap.add_argument("--yes", action="store_true")
+    ap.add_argument("--status", action="store_true")
+    ap.add_argument("--duration", type=int, default=8)
+    ap.add_argument("--resolution", default="1080p", choices=["720p", "1080p"])
+    ap.add_argument("-h", "--help", action="store_true")
+    args = ap.parse_args()
+    if args.help:
+        print(__doc__)
+        return
+    OUT.mkdir(parents=True, exist_ok=True)
+    if args.status:
+        return status_report()
+    if not 2 <= args.duration <= 15:
+        sys.exit("--duration must be 2-15 seconds")
+    args.redo_nonce = str(time.time()) if args.redo else ""
+
+    if args.all:
+        themes = sorted(p.name for p in COLLECTIONS.iterdir() if p.is_dir() and not p.is_symlink())
+    else:
+        themes = [args.theme or (STATE.read_text().strip() if STATE.exists() else "")]
+    todo = [(t, p) for t, p in stills(themes) if args.redo or not target(p).exists()]
+    pending = load_pending()
+    if not todo:
+        print("Nothing to do -- every wallpaper in", ", ".join(themes), "is already animated.")
+        return
+
+    AUTH = creds()
+    fresh = [x for x in todo if str(x[1]) not in pending]
+    if fresh:
+        print(f"Estimating cost with Higgsfield ({MODEL}, {args.duration}s, {args.resolution})…")
+        t0, p0 = fresh[0]
+        est = call("POST", "/estimate/" + MODEL, body_for(t0, upload(p0), args))
+        each_c, each_u = float(est.get("credits", 0)), float(est.get("usd", 0))
+        print(f"\n  {len(fresh)} wallpaper(s) × {each_c:g} credits ≈ {each_c * len(fresh):g} credits"
+              f" (≈ ${each_u * len(fresh):.2f})")
+        if len(todo) > len(fresh):
+            print(f"  plus {len(todo) - len(fresh)} already-submitted request(s) to collect (no new charge)")
+        print("  Failed or moderated requests are not charged.\n")
+        if not args.yes:
+            if not sys.stdin.isatty() or input("Generate? [y/N] ").strip().lower() not in ("y", "yes"):
+                print("Cancelled -- nothing was charged.")
+                return
+
+    import threading
+    lock = threading.Lock()
+    ok = 0
+    failed = []
+    print(f"Animating {len(todo)} wallpaper(s); this takes a few minutes each, 3 at a time…")
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futs = {ex.submit(animate, t, p, args, pending, lock): (t, p) for t, p in todo}
+        for i, f in enumerate(as_completed(futs), 1):
+            t, p = futs[f]
+            try:
+                res = f.result()
+            except Exception as e:  # keep going; report at the end
+                res = f"error: {e}"
+            if res == "ok":
+                ok += 1
+            else:
+                failed.append((t, p.name, res))
+            print(f"  [{i}/{len(todo)}] {t}/{p.name}: {res}")
+    print(f"\nDone: {ok} animated, {len(failed)} not.")
+    for t, n, why in failed:
+        print(f"  {t}/{n}: {why}")
+    lw = HOME / ".local/bin/livewall"
+    if lw.exists():
+        subprocess.run([str(lw), "sync"], capture_output=True)  # start the new clip right away
+
+
+if __name__ == "__main__":
+    main()
