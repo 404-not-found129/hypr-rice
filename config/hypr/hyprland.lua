@@ -79,16 +79,35 @@ local function aether_color(key, fallback)
     return hex
 end
 
+-- Look & feel knobs, overridable from the settings app (rice-settings),
+-- which writes ~/.config/hypr-rice/look.lua as a plain Lua table.
+local look = {
+    gaps_in          = 5,
+    gaps_out         = 12,
+    border_size      = 2,
+    rounding         = 12,
+    blur             = true,
+    animations       = true,
+    inactive_opacity = 0.95,
+    terminal_opacity = 0.72,
+}
+do
+    local ok, user = pcall(dofile, os.getenv("HOME") .. "/.config/hypr-rice/look.lua")
+    if ok and type(user) == "table" then
+        for k, v in pairs(user) do look[k] = v end
+    end
+end
+
 local accent        = aether_color("accent",   "cba6f7")
 local accent2       = aether_color("cursor",   "89b4fa")
 local border_muted  = aether_color("muted",    "313244")
 
 hl.config({
     general = {
-        gaps_in  = 5,
-        gaps_out = 12,
+        gaps_in  = look.gaps_in,
+        gaps_out = look.gaps_out,
 
-        border_size = 2,
+        border_size = look.border_size,
 
         col = {
             active_border   = { colors = { "rgba(" .. accent .. "ff)", "rgba(" .. accent2 .. "ff)" }, angle = 45 },
@@ -101,11 +120,11 @@ hl.config({
     },
 
     decoration = {
-        rounding       = 12,
+        rounding       = look.rounding,
         rounding_power = 2,
 
         active_opacity   = 1.0,
-        inactive_opacity = 0.95,
+        inactive_opacity = look.inactive_opacity,
 
         shadow = {
             enabled      = true,
@@ -115,7 +134,7 @@ hl.config({
         },
 
         blur = {
-            enabled  = true,
+            enabled  = look.blur,
             size     = 8,
             passes   = 4,
 
@@ -135,7 +154,7 @@ hl.config({
     },
 
     animations = {
-        enabled = true,
+        enabled = look.animations,
     },
 })
 
@@ -271,6 +290,7 @@ hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("~/.local/bin/wallcycle rando
 
 -- Extras
 hl.bind(mainMod .. " + slash",      hl.dsp.exec_cmd("~/.local/bin/keybinds"))           -- desc: this cheat sheet
+hl.bind(mainMod .. " + comma",      hl.dsp.exec_cmd("~/.local/bin/rice-settings"))      -- desc: settings
 hl.bind(mainMod .. " + N",          hl.dsp.exec_cmd("~/.local/bin/nightlight toggle"))  -- desc: night light
 hl.bind(mainMod .. " + period",     hl.dsp.exec_cmd("walker -m symbols"))               -- desc: emoji / symbol picker
 hl.bind(mainMod .. " + SHIFT + R",  hl.dsp.exec_cmd("~/.local/bin/screenrec region"))   -- desc: record region (again to stop)
@@ -361,6 +381,15 @@ hl.window_rule({
     float = true,
 })
 
+-- Settings app (Super+,)
+hl.window_rule({
+    name  = "rice-settings",
+    match = { class = "^(rice\\.settings)$" },
+    float = true,
+    size  = { 980, 680 },
+    center = true,
+})
+
 -- Theme picker: centered floating card grid (Super+T)
 hl.window_rule({
     name  = "theme-picker",
@@ -381,7 +410,7 @@ hl.window_rule({
 hl.window_rule({
     name    = "terminal-opacity",
     match   = { class = "^(Alacritty|kitty)$" },
-    opacity = "0.72 0.72",
+    opacity = look.terminal_opacity .. " " .. look.terminal_opacity,
 })
 
 

@@ -33,7 +33,7 @@ PACMAN_DEPS=(
   fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
   rofi git base-devel
   playerctl brightnessctl hyprsunset wf-recorder slurp jq libnotify
-  bluez bluez-utils blueman
+  bluez bluez-utils blueman libadwaita
 )
 AUR_DEPS=(
   aether walker-bin wlogout
@@ -94,6 +94,11 @@ mkdir -p "$HOME/.local/bin"
 cp "$REPO/bin/"* "$HOME/.local/bin/"
 for f in "$REPO/bin/"*; do chmod +x "$HOME/.local/bin/$(basename "$f")"; done
 chmod +x "$HOME/.config/aether/custom/hypr-wallpaper/post-apply.sh"
+
+# Launcher entry for the settings app (Super+, also opens it)
+mkdir -p "$HOME/.local/share/applications"
+cp "$REPO/config/applications/"*.desktop "$HOME/.local/share/applications/"
+sed -i "s|__HOME__|$HOME|g" "$HOME/.local/share/applications/rice-settings.desktop"
 
 mkdir -p "$HOME/.config/systemd/user"
 cp -r "$REPO/systemd/." "$HOME/.config/systemd/user/"
@@ -192,6 +197,7 @@ echo "    Super+T           switch theme (games: elden-ring, fallout, ...  aesth
 echo "    Super+Shift+T     random theme           Super+Left/Right  cycle wallpapers"
 echo "    Super+Return      terminal (alacritty)   Super+Space       launcher (walker)"
 echo "    Super+/           every keybind, searchable"
+echo "    Super+,           settings (themes, gaps/blur, schedule, night light)"
 echo
 echo "  Optional: 'theme-schedule on' switches to a light theme by day and a dark one"
 echo "  at night (edit ~/.config/hypr-rice/schedule)."

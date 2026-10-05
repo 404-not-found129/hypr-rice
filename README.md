@@ -69,6 +69,7 @@ Press **`Super+/`** for the full, searchable list (read live from your
 | `Super+N` | Night light on/off (hyprsunset) |
 | `Super+Shift+R` / `Super+Alt+R` | Record a region / the screen (press again to stop) |
 | `Super+.` | Emoji & symbol picker |
+| `Super+,` | Settings app |
 | `Super+Return` | Terminal (alacritty, frosted-glass blur) |
 | `Super+Space` | Launcher (walker) |
 | `Super+E` | File manager (thunar, theme-tinted folder icons) |
@@ -78,6 +79,16 @@ Press **`Super+/`** for the full, searchable list (read live from your
 
 ## Extras
 
+- **Settings app (`Super+,`, or right-click the bar logo).** One window for
+  the theme and wallpaper, gaps / borders / rounding / blur / animations /
+  opacity (applied live), the day/night schedule, night-light temperature, a
+  searchable keybind list, and versions/folders. `rice-settings <page>` opens
+  a specific page (`appearance`, `look`, `schedule`, `nightlight`,
+  `keybinds`, `about`). Look & feel is stored in
+  `~/.config/hypr-rice/look.lua`, which `hyprland.lua` reads.
+- **fastfetch** uses a grouped, boxed layout (system / desktop / hardware /
+  session, including the active rice theme) in the style of fastfetch's own
+  presets. Its colors are terminal palette slots, so it follows the theme.
 - **Light/dark follows the theme.** Pick a light theme (catppuccin-latte) and
   GTK/libadwaita apps, Firefox/Chromium and Electron apps switch to light
   mode too; dark themes switch them back. Decided from the palette itself, so

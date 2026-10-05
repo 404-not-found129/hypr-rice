@@ -4,7 +4,7 @@
 Decided from the luminance of the applied palette's background (not the
 blueprint's lightMode flag), so it is also right for "auto" themes extracted
 from a wallpaper. Sets the freedesktop color-scheme via gsettings (read by
-the portal, libadwaita, Firefox, Chromium, Electron) and patches
+the portal, libadwaita, Firefox, Chromium, Electron) and patches GTK3's
 gtk-application-prefer-dark-theme in settings.ini, because this setup has no
 XSettings daemon to bridge gsettings into running GTK3 apps (same reason
 game-icons patches the icon theme there). Called from the Aether post-apply
@@ -29,16 +29,24 @@ light = (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.5
 subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme",
                 "prefer-light" if light else "prefer-dark"], capture_output=True)
 
-line = f"gtk-application-prefer-dark-theme={'false' if light else 'true'}"
-for ini in (HOME / ".config/gtk-3.0/settings.ini", HOME / ".config/gtk-4.0/settings.ini"):
-    ini.parent.mkdir(parents=True, exist_ok=True)
-    text = ini.read_text() if ini.exists() else "[Settings]\n"
-    if re.search(r"^gtk-application-prefer-dark-theme=.*$", text, re.M):
-        text = re.sub(r"^gtk-application-prefer-dark-theme=.*$", line, text, flags=re.M)
-    elif "[Settings]" in text:
-        text = text.replace("[Settings]", f"[Settings]\n{line}", 1)
-    else:
-        text = f"[Settings]\n{line}\n" + text
-    ini.write_text(text)
+# GTK3 needs prefer-dark-theme in settings.ini. GTK4/libadwaita apps take the
+# color-scheme above instead and warn if the old key is set, so it is removed
+# from the gtk-4.0 file.
+key = "gtk-application-prefer-dark-theme"
+line = f"{key}={'false' if light else 'true'}"
+gtk3 = HOME / ".config/gtk-3.0/settings.ini"
+gtk3.parent.mkdir(parents=True, exist_ok=True)
+text = gtk3.read_text() if gtk3.exists() else "[Settings]\n"
+if re.search(rf"^{key}=.*$", text, re.M):
+    text = re.sub(rf"^{key}=.*$", line, text, flags=re.M)
+elif "[Settings]" in text:
+    text = text.replace("[Settings]", f"[Settings]\n{line}", 1)
+else:
+    text = f"[Settings]\n{line}\n" + text
+gtk3.write_text(text)
+
+gtk4 = HOME / ".config/gtk-4.0/settings.ini"
+if gtk4.exists():
+    gtk4.write_text(re.sub(rf"^{key}=.*\n?", "", gtk4.read_text(), flags=re.M))
 
 print("light" if light else "dark")

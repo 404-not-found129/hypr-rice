@@ -1,0 +1,529 @@
+#!/usr/bin/env python3
+"""hypr-rice settings (Super+,).
+
+One libadwaita window for everything the rice lets you tune, without
+editing files by hand:
+
+  Appearance   theme, random / from-wallpaper, wallpaper cycling
+  Look & feel  gaps, borders, rounding, blur, animations, opacity
+               -> ~/.config/hypr-rice/look.lua (read by hyprland.lua)
+  Schedule     day/night themes and times -> ~/.config/hypr-rice/schedule
+  Night light  on/off and temperature     -> ~/.config/hypr-rice/nightlight
+  Keybinds     searchable list, read live from hyprland.lua
+  About        versions, active theme, config folders
+
+Every action goes through the same scripts the keybinds use (themectl,
+wallcycle, theme-schedule, nightlight), so behavior never diverges. The
+accent color follows the active theme.
+"""
+import re
+import subprocess
+from pathlib import Path
+
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+
+HOME = Path.home()
+BIN = HOME / ".local/bin"
+RICE = HOME / ".config/hypr-rice"
+LOOK = RICE / "look.lua"
+SCHEDULE = RICE / "schedule"
+NIGHTLIGHT = RICE / "nightlight"
+COLORS = HOME / ".config/aether/theme/colors.toml"
+STATE = HOME / ".config/aether/current-theme"
+
+# Must match the defaults in hyprland.lua
+LOOK_DEFAULTS = {
+    "gaps_in": 5, "gaps_out": 12, "border_size": 2, "rounding": 12,
+    "blur": True, "animations": True,
+    "inactive_opacity": 0.95, "terminal_opacity": 0.72,
+}
+SCHEDULE_DEFAULTS = {"day": "catppuccin-latte", "night": "rose-pine",
+                     "sunrise": "07:00", "sunset": "19:00"}
+TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def run(*args, background=False):
+    """Run one of the rice's scripts. Background runs never block the UI
+    (theme applies take a few seconds)."""
+    cmd = [str(BIN / args[0]), *args[1:]] if (BIN / args[0]).exists() else list(args)
+    if background:
+        subprocess.Popen(["setsid", *cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return ""
+    return subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+
+
+def palette():
+    cols = {}
+    if COLORS.exists():
+        cols = dict(re.findall(r'^(\w+)\s*=\s*"([^"]*)"', COLORS.read_text(), re.M))
+    return cols
+
+
+def is_light(hexcol):
+    """Same luminance test color-scheme-sync uses."""
+    h = hexcol.lstrip("#")
+    if not re.fullmatch(r"[0-9a-fA-F]{6}", h):
+        return False
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5
+
+
+def themes():
+    out = run("themectl", "list")
+    return [line[2:].strip() for line in out.splitlines() if line.strip()]
+
+
+def current_theme():
+    return STATE.read_text().strip() if STATE.exists() else ""
+
+
+def read_kv(path, defaults):
+    vals = dict(defaults)
+    if path.exists():
+        for line in path.read_text().splitlines():
+            m = re.match(r"^\s*(\w+)\s*=\s*(.*?)\s*,?\s*$", line)
+            if m and m.group(1) in vals:
+                vals[m.group(1)] = m.group(2).strip('"')
+    return vals
+
+
+def read_look():
+    raw = read_kv(LOOK, {k: str(v) for k, v in LOOK_DEFAULTS.items()})
+    look = {}
+    for k, default in LOOK_DEFAULTS.items():
+        v = raw[k]
+        if isinstance(default, bool):
+            look[k] = v.lower() == "true" if isinstance(v, str) else bool(v)
+        elif isinstance(default, float):
+            look[k] = float(v)
+        else:
+            look[k] = int(float(v))
+    return look
+
+
+def write_look(look):
+    RICE.mkdir(parents=True, exist_ok=True)
+    body = []
+    for k in LOOK_DEFAULTS:
+        v = look[k]
+        if isinstance(v, bool):
+            v = "true" if v else "false"
+        elif isinstance(v, float):
+            v = f"{v:.2f}"
+        body.append(f"    {k} = {v},")
+    LOOK.write_text("-- Written by rice-settings; read by ~/.config/hypr/hyprland.lua\nreturn {\n"
+                    + "\n".join(body) + "\n}\n")
+
+
+def write_schedule(s):
+    RICE.mkdir(parents=True, exist_ok=True)
+    SCHEDULE.write_text(
+        "# Day/night theme schedule -- written by rice-settings.\n"
+        "# Any theme name from `themectl list` works.\n"
+        + "".join(f"{k}={s[k]}\n" for k in ("day", "night", "sunrise", "sunset")))
+
+
+class Settings(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id="rice.settings",
+                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.win = None
+        self.stack = None
+        self._look_timer = 0
+        self._busy = False   # suppress handlers while filling widgets
+
+    # ------------------------------------------------------------ window --
+    def do_command_line(self, cl):
+        """`rice-settings [page]` opens on that page (appearance, look,
+        schedule, nightlight, keybinds, about); a second call just raises
+        the running window."""
+        args = cl.get_arguments()[1:]
+        self.activate()
+        if args and self.stack and self.stack.get_child_by_name(args[0]):
+            self.stack.set_visible_child_name(args[0])
+        return 0
+
+    def do_activate(self):
+        if self.win:
+            self.win.present()
+            return
+        self.apply_accent()
+        self.win = Adw.ApplicationWindow(application=self, title="Rice Settings")
+        self.win.set_default_size(980, 680)
+
+        self.toasts = Adw.ToastOverlay()
+        stack = self.stack = Adw.ViewStack()
+        self._busy = True   # widgets fire change signals while being filled
+        for name, title, icon, page in (
+            ("appearance", "Appearance", "preferences-desktop-appearance-symbolic", self.page_appearance()),
+            ("look", "Look & Feel", "preferences-desktop-display-symbolic", self.page_look()),
+            ("schedule", "Schedule", "alarm-symbolic", self.page_schedule()),
+            ("nightlight", "Night Light", "weather-clear-night-symbolic", self.page_nightlight()),
+            ("keybinds", "Keybinds", "input-keyboard-symbolic", self.page_keybinds()),
+            ("about", "About", "help-about-symbolic", self.page_about()),
+        ):
+            stack.add_titled_with_icon(page, name, title, icon)
+        self._busy = False
+
+        header = Adw.HeaderBar()
+        switcher = Adw.ViewSwitcher(stack=stack, policy=Adw.ViewSwitcherPolicy.WIDE)
+        header.set_title_widget(switcher)
+        view = Adw.ToolbarView()
+        view.add_top_bar(header)
+        self.toasts.set_child(stack)
+        view.set_content(self.toasts)
+        self.win.set_content(view)
+
+        keys = Gtk.EventControllerKey()
+        keys.connect("key-pressed", lambda _c, kv, *_: kv == Gdk.KEY_Escape and (self.win.close() or True))
+        self.win.add_controller(keys)
+        self.win.present()
+
+    def apply_accent(self):
+        """Tint libadwaita's accent with the active theme's accent; light/dark
+        itself already follows the theme via color-scheme-sync."""
+        acc = palette().get("accent")
+        if not acc:
+            return
+        css = (f":root {{ --accent-bg-color: {acc}; --accent-color: {acc}; }}\n"
+               f"@define-color accent_bg_color {acc};\n@define-color accent_color {acc};\n")
+        prov = Gtk.CssProvider()
+        prov.load_from_string(css)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), prov, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    def toast(self, text):
+        self.toasts.add_toast(Adw.Toast(title=text, timeout=2))
+
+    def button(self, label, cb, suggested=False):
+        b = Gtk.Button(label=label, valign=Gtk.Align.CENTER)
+        if suggested:
+            b.add_css_class("suggested-action")
+        b.connect("clicked", lambda *_: cb())
+        return b
+
+    # -------------------------------------------------------- appearance --
+    def page_appearance(self):
+        page = Adw.PreferencesPage()
+
+        grp = Adw.PreferencesGroup(title="Theme",
+                                   description="Wallpaper, colors, bar, icons, cursor and terminal all follow it.")
+        self.theme_names = themes()
+        self.theme_row = Adw.ComboRow(title="Active theme",
+                                      model=Gtk.StringList.new(self.theme_names))
+        cur = current_theme()
+        if cur in self.theme_names:
+            self.theme_row.set_selected(self.theme_names.index(cur))
+        self.theme_row.connect("notify::selected", self.on_theme_selected)
+        grp.add(self.theme_row)
+
+        row = Adw.ActionRow(title="Surprise me", subtitle="Any theme, or only one group")
+        box = Gtk.Box(spacing=8)
+        box.append(self.button("Any", lambda: self.theme_cmd("random", "Random theme")))
+        box.append(self.button("Game", lambda: self.theme_cmd("random games", "Random game theme")))
+        box.append(self.button("Aesthetic", lambda: self.theme_cmd("random aesthetic", "Random aesthetic theme")))
+        row.add_suffix(box)
+        grp.add(row)
+
+        row = Adw.ActionRow(title="Match the wallpaper",
+                            subtitle="Extract a palette from whatever wallpaper is showing")
+        row.add_suffix(self.button("Extract", lambda: self.theme_cmd("auto", "Colors from wallpaper")))
+        grp.add(row)
+
+        row = Adw.ActionRow(title="Visual picker", subtitle="Wallpaper cards for every theme (Super+T)")
+        row.add_suffix(self.button("Open", lambda: run("theme-picker", background=True)))
+        grp.add(row)
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(title="Wallpaper",
+                                   description="Cycles within the active theme's collection; colors re-extract each time.")
+        row = Adw.ActionRow(title="Change wallpaper")
+        box = Gtk.Box(spacing=8)
+        box.append(self.button("Previous", lambda: self.wall_cmd("prev")))
+        box.append(self.button("Next", lambda: self.wall_cmd("next")))
+        box.append(self.button("Random", lambda: self.wall_cmd("random")))
+        row.add_suffix(box)
+        grp.add(row)
+        row = Adw.ActionRow(title="Add your own",
+                            subtitle="Drop images into the theme's folder; they're picked up automatically")
+        row.add_suffix(self.button("Open folder", self.open_wall_folder))
+        grp.add(row)
+        page.add(grp)
+        return page
+
+    def on_theme_selected(self, row, _pspec):
+        if self._busy:
+            return
+        name = self.theme_names[row.get_selected()]
+        if name != current_theme():
+            run("themectl", "set", name, background=True)
+            self.toast(f"Applying {name}…")
+
+    def theme_cmd(self, args, msg):
+        run("themectl", *args.split(), background=True)
+        self.toast(f"{msg}…")
+        GLib.timeout_add_seconds(3, self.sync_theme_row)
+
+    def sync_theme_row(self):
+        cur = current_theme()
+        if cur in self.theme_names:
+            self._busy = True
+            self.theme_row.set_selected(self.theme_names.index(cur))
+            self._busy = False
+        return False
+
+    def wall_cmd(self, how):
+        run("wallcycle", how, background=True)
+        self.toast("Changing wallpaper…")
+
+    def open_wall_folder(self):
+        d = HOME / "Pictures/wallpapers/collections" / (current_theme() or "")
+        d.mkdir(parents=True, exist_ok=True)
+        Gio.AppInfo.launch_default_for_uri(d.as_uri(), None)
+
+    # ------------------------------------------------------- look & feel --
+    def page_look(self):
+        page = Adw.PreferencesPage()
+        look = read_look()
+        self.look_rows = {}
+
+        def spin(key, title, subtitle, lo, hi, step, digits=0):
+            r = Adw.SpinRow.new_with_range(lo, hi, step)
+            r.set_title(title)
+            r.set_subtitle(subtitle)
+            r.set_digits(digits)
+            r.set_value(look[key])
+            r.connect("notify::value", lambda *_: self.look_changed())
+            self.look_rows[key] = r
+            return r
+
+        def switch(key, title, subtitle):
+            r = Adw.SwitchRow(title=title, subtitle=subtitle, active=look[key])
+            r.connect("notify::active", lambda *_: self.look_changed())
+            self.look_rows[key] = r
+            return r
+
+        grp = Adw.PreferencesGroup(title="Layout", description="Changes apply live.")
+        grp.add(spin("gaps_in", "Inner gaps", "Space between windows", 0, 40, 1))
+        grp.add(spin("gaps_out", "Outer gaps", "Space around the screen edge", 0, 80, 1))
+        grp.add(spin("border_size", "Border width", "Theme-colored window border", 0, 10, 1))
+        grp.add(spin("rounding", "Corner rounding", "Window corner radius", 0, 40, 1))
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(title="Effects")
+        grp.add(switch("blur", "Blur", "Frosted glass behind translucent windows, bar and launcher"))
+        grp.add(switch("animations", "Animations", "Turn off for a snappier, lighter desktop"))
+        grp.add(spin("inactive_opacity", "Unfocused window opacity", "1.00 = fully opaque", 0.5, 1.0, 0.05, 2))
+        grp.add(spin("terminal_opacity", "Terminal opacity", "Alacritty and kitty", 0.4, 1.0, 0.02, 2))
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup()
+        row = Adw.ActionRow(title="Reset to defaults")
+        row.add_suffix(self.button("Reset", self.reset_look))
+        grp.add(row)
+        page.add(grp)
+        return page
+
+    def look_changed(self):
+        if self._busy:
+            return
+        # debounce: spin buttons fire per step while held
+        if self._look_timer:
+            GLib.source_remove(self._look_timer)
+        self._look_timer = GLib.timeout_add(350, self.save_look)
+
+    def collect_look(self):
+        look = {}
+        for k, default in LOOK_DEFAULTS.items():
+            r = self.look_rows[k]
+            if isinstance(default, bool):
+                look[k] = r.get_active()
+            elif isinstance(default, float):
+                look[k] = round(r.get_value(), 2)
+            else:
+                look[k] = int(r.get_value())
+        return look
+
+    def save_look(self):
+        self._look_timer = 0
+        write_look(self.collect_look())
+        subprocess.run(["hyprctl", "reload"], capture_output=True)
+        return False
+
+    def reset_look(self):
+        self._busy = True
+        for k, v in LOOK_DEFAULTS.items():
+            r = self.look_rows[k]
+            r.set_active(v) if isinstance(v, bool) else r.set_value(v)
+        self._busy = False
+        LOOK.unlink(missing_ok=True)
+        subprocess.run(["hyprctl", "reload"], capture_output=True)
+        self.toast("Look & feel reset")
+
+    # ---------------------------------------------------------- schedule --
+    def page_schedule(self):
+        page = Adw.PreferencesPage()
+        s = read_kv(SCHEDULE, SCHEDULE_DEFAULTS)
+        names = self.theme_names or themes()
+
+        grp = Adw.PreferencesGroup(
+            title="Day / night themes",
+            description="Switches theme at sunrise and sunset. Picking a theme by hand is respected until the next switch.")
+        enabled = subprocess.run(["systemctl", "--user", "is-enabled", "theme-schedule.timer"],
+                                 capture_output=True, text=True).stdout.strip() == "enabled"
+        self.sched_on = Adw.SwitchRow(title="Automatic switching", active=enabled)
+        self.sched_on.connect("notify::active", self.on_schedule_toggled)
+        grp.add(self.sched_on)
+
+        self.sched_rows = {}
+        for key, title in (("day", "Day theme"), ("night", "Night theme")):
+            r = Adw.ComboRow(title=title, model=Gtk.StringList.new(names))
+            if s[key] in names:
+                r.set_selected(names.index(s[key]))
+            r.connect("notify::selected", lambda *_: self.save_schedule())
+            self.sched_rows[key] = r
+            grp.add(r)
+        for key, title in (("sunrise", "Day starts at"), ("sunset", "Night starts at")):
+            r = Adw.EntryRow(title=f"{title} (HH:MM)", text=s[key], show_apply_button=True)
+            r.connect("apply", lambda *_: self.save_schedule())
+            self.sched_rows[key] = r
+            grp.add(r)
+        page.add(grp)
+        return page
+
+    def collect_schedule(self):
+        names = self.theme_names
+        s = {k: names[self.sched_rows[k].get_selected()] for k in ("day", "night")}
+        for k in ("sunrise", "sunset"):
+            s[k] = self.sched_rows[k].get_text().strip()
+        return s
+
+    def save_schedule(self):
+        if self._busy:
+            return
+        s = self.collect_schedule()
+        bad = [k for k in ("sunrise", "sunset") if not TIME_RE.match(s[k])]
+        for k in ("sunrise", "sunset"):
+            (self.sched_rows[k].add_css_class if k in bad else self.sched_rows[k].remove_css_class)("error")
+        if bad:
+            self.toast("Times must look like 07:30")
+            return
+        write_schedule(s)
+        if self.sched_on.get_active():
+            run("theme-schedule", "on", background=True)  # re-evaluate right now
+        self.toast("Schedule saved")
+
+    def on_schedule_toggled(self, row, _pspec):
+        if self._busy:
+            return
+        if row.get_active():
+            self.save_schedule()
+            run("theme-schedule", "on", background=True)
+            self.toast("Schedule on")
+        else:
+            run("theme-schedule", "off", background=True)
+            self.toast("Schedule off")
+
+    # -------------------------------------------------------- night light --
+    def page_nightlight(self):
+        page = Adw.PreferencesPage()
+        grp = Adw.PreferencesGroup(title="Night light",
+                                   description="Warmer colors to go easy on your eyes at night (Super+N).")
+        running = subprocess.run(["pgrep", "-x", "hyprsunset"], capture_output=True).returncode == 0
+        self.nl_on = Adw.SwitchRow(title="Night light", active=running)
+        self.nl_on.connect("notify::active", lambda r, _p: self._busy or
+                           run("nightlight", "on" if r.get_active() else "off"))
+        grp.add(self.nl_on)
+
+        temp = int(read_kv(NIGHTLIGHT, {"temp": "4000"})["temp"] or 4000)
+        self.nl_temp = Adw.SpinRow.new_with_range(2500, 6500, 100)
+        self.nl_temp.set_title("Temperature")
+        self.nl_temp.set_subtitle("Kelvin -- lower is warmer (6500 = neutral)")
+        self.nl_temp.set_value(temp)
+        self._nl_timer = 0
+        self.nl_temp.connect("notify::value", lambda *_: self.nl_changed())
+        grp.add(self.nl_temp)
+        page.add(grp)
+        return page
+
+    def nl_changed(self):
+        if self._busy:
+            return
+        if self._nl_timer:
+            GLib.source_remove(self._nl_timer)
+        self._nl_timer = GLib.timeout_add(500, self.save_nl)
+
+    def save_nl(self):
+        self._nl_timer = 0
+        RICE.mkdir(parents=True, exist_ok=True)
+        NIGHTLIGHT.write_text(f"temp={int(self.nl_temp.get_value())}\n")
+        run("nightlight", "restart")
+        return False
+
+    # ----------------------------------------------------------- keybinds --
+    def page_keybinds(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
+                      margin_top=18, margin_bottom=18, margin_start=24, margin_end=24)
+        search = Gtk.SearchEntry(placeholder_text="Search keybinds…")
+        box.append(search)
+        lst = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        lst.add_css_class("boxed-list")
+        self.kb_rows = []
+        for line in run("keybinds", "--print").splitlines():
+            parts = re.split(r"\s{2,}", line.strip(), maxsplit=1)
+            if len(parts) != 2:
+                continue
+            keys, desc = parts
+            r = Adw.ActionRow(title=GLib.markup_escape_text(desc))
+            lab = Gtk.Label(label=keys)
+            lab.add_css_class("dim-label")
+            lab.add_css_class("monospace")
+            r.add_suffix(lab)
+            lst.append(r)
+            self.kb_rows.append((r, f"{keys} {desc}".lower()))
+
+        def on_search(*_):
+            q = search.get_text().lower()
+            for row, text in self.kb_rows:
+                row.set_visible(q in text)
+        search.connect("search-changed", on_search)
+        self.kb_search = search
+        sc = Gtk.ScrolledWindow(vexpand=True, child=lst)
+        box.append(sc)
+        return box
+
+    # -------------------------------------------------------------- about --
+    def page_about(self):
+        page = Adw.PreferencesPage()
+        grp = Adw.PreferencesGroup(title="This desktop")
+
+        def info(title, value):
+            r = Adw.ActionRow(title=title, subtitle=value or "unknown")
+            r.add_css_class("property")
+            grp.add(r)
+
+        hypr = subprocess.run(["hyprctl", "version"], capture_output=True, text=True).stdout
+        m = re.search(r"Hyprland ([\d.]+)", hypr)
+        info("Hyprland", m.group(1) if m else "")
+        info("Aether", run("aether", "--version").replace("aether ", ""))
+        info("Active theme", current_theme() or "auto")
+        info("Mode", "light" if is_light(palette().get("background", "#000000")) else "dark")
+        page.add(grp)
+
+        grp2 = Adw.PreferencesGroup(title="Folders")
+        for title, path in (("Rice settings", RICE), ("Hyprland config", HOME / ".config/hypr"),
+                            ("Theme blueprints", HOME / ".config/aether/blueprints"),
+                            ("Wallpapers", HOME / "Pictures/wallpapers/collections")):
+            r = Adw.ActionRow(title=title, subtitle=str(path).replace(str(HOME), "~"))
+            r.add_suffix(self.button("Open", lambda p=path: Gio.AppInfo.launch_default_for_uri(p.as_uri(), None)))
+            grp2.add(r)
+        page.add(grp2)
+        return page
+
+
+if __name__ == "__main__":
+    import sys
+    Settings().run(sys.argv)

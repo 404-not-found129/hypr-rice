@@ -1,56 +1,70 @@
-// fastfetch — Catppuccin Mocha
+// fastfetch — hypr-rice
+// Grouped, boxed layout in the style of fastfetch's own presets/examples
+// (MIT). Every color is a terminal palette slot (blue, magenta, ...), and the
+// terminal palette is rendered by Aether per theme -- so this follows the
+// active theme without ever being regenerated.
 {
     "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
     "logo": {
         "source": "arch",
-        "padding": {
-            "top": 1,
-            "right": 4
-        },
-        "color": {
-            "1": "blue",
-            "2": "cyan"
-        }
+        "padding": { "top": 2, "left": 1, "right": 3 },
+        "color": { "1": "blue", "2": "cyan" }
     },
     "display": {
-        "separator": "  ",
-        "color": {
-            "keys": "magenta",
-            "title": "blue"
-        }
+        "separator": " ",
+        "key": { "width": 14 },
+        "color": { "keys": "blue", "output": "default" },
+        "size": { "binaryPrefix": "jedec" },
+        "bar": { "char": { "elapsed": "■", "total": "·" }, "width": 12 },
+        "percent": { "type": ["num", "bar"] }
     },
     "modules": [
+        "break",
         {
             "type": "title",
-            "format": "{user-name}@{host-name}"
+            "format": "{#1;blue}{user-name}{#}{#90}@{#}{#1;cyan}{host-name}"
         },
-        {
-            "type": "separator",
-            "string": "─"
-        },
-        { "type": "os",      "key": "󰣇 os" },
-        { "type": "kernel",  "key": "󰌽 kernel" },
-        { "type": "wm",      "key": "󱂬 wm" },
-        { "type": "shell",   "key": "󰆍 shell" },
-        { "type": "terminal","key": " term" },
-        { "type": "packages","key": "󰏖 pkgs" },
-        { "type": "uptime",  "key": "󰔟 uptime" },
         "break",
-        { "type": "cpu",     "key": "󰻠 cpu" },
-        { "type": "gpu",     "key": "󰢮 gpu" },
-        { "type": "memory",  "key": "󰍛 memory" },
-        { "type": "disk",    "key": "󰋊 disk", "folders": "/" },
+
+        { "type": "custom", "format": "{#magenta}╭─ 󰣇 system ──────────────────────────────" },
+        { "type": "os",       "key": "│ 󰣇 os",      "keyColor": "magenta", "format": "{pretty-name} {arch}" },
+        { "type": "kernel",   "key": "│ 󰌽 kernel",  "keyColor": "magenta" },
+        { "type": "packages", "key": "│ 󰏖 packages","keyColor": "magenta" },
+        { "type": "shell",    "key": "│ 󰆍 shell",   "keyColor": "magenta" },
+        { "type": "custom",   "format": "{#magenta}╰─────────────────────────────────────────" },
+
+        { "type": "custom", "format": "{#blue}╭─ 󱂬 desktop ─────────────────────────────" },
+        { "type": "wm",       "key": "│ 󱂬 wm",      "keyColor": "blue" },
+        {
+            "type": "command",
+            "key": "│ 󰏘 theme",
+            "keyColor": "blue",
+            "text": "cat ~/.config/aether/current-theme 2>/dev/null || echo auto"
+        },
+        { "type": "terminal", "key": "│  terminal","keyColor": "blue" },
+        { "type": "terminalfont", "key": "│ 󰛖 font", "keyColor": "blue" },
+        { "type": "cursor",   "key": "│ 󰇀 cursor",  "keyColor": "blue" },
+        { "type": "custom",   "format": "{#blue}╰─────────────────────────────────────────" },
+
+        { "type": "custom", "format": "{#cyan}╭─ 󰌢 hardware ────────────────────────────" },
+        { "type": "cpu",      "key": "│ 󰻠 cpu",     "keyColor": "cyan", "showPeCoreCount": true },
+        { "type": "gpu",      "key": "│ 󰢮 gpu",     "keyColor": "cyan", "format": "{name}" },
+        { "type": "memory",   "key": "│ 󰍛 memory",  "keyColor": "cyan" },
+        { "type": "disk",     "key": "│ 󰋊 disk",    "keyColor": "cyan", "folders": "/" },
         {
             "type": "display",
-            "key": "󰍹 display",
-            "compactType": "original-with-refresh-rate"
+            "key": "│ 󰍹 display",
+            "keyColor": "cyan",
+            "format": "{width}x{height} @ {refresh-rate} Hz"
         },
-        {
-            "type": "wifi",
-            "key": "󰤨 wifi",
-            "format": "{ssid}"
-        },
+        { "type": "custom",   "format": "{#cyan}╰─────────────────────────────────────────" },
+
+        { "type": "custom", "format": "{#green}╭─ 󰔟 session ─────────────────────────────" },
+        { "type": "uptime",   "key": "│ 󰔟 uptime",  "keyColor": "green" },
+        { "type": "media",    "key": "│ 󰝚 playing", "keyColor": "green" },
+        { "type": "custom",   "format": "{#green}╰─────────────────────────────────────────" },
+
         "break",
-        { "type": "colors", "symbol": "circle" }
+        { "type": "colors", "symbol": "circle", "paddingLeft": 2 }
     ]
 }

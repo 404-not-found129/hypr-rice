@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Rice Settings
+GenericName=Desktop Settings
+Comment=Themes, look & feel, day/night schedule, night light and keybinds
+Exec=__HOME__/.local/bin/rice-settings
+Icon=preferences-desktop
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=theme;wallpaper;gaps;blur;night light;keybinds;hyprland;
+StartupWMClass=rice.settings

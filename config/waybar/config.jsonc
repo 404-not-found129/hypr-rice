@@ -33,8 +33,10 @@
     ],
     "custom/logo": {
         "format": "󰞇",
-        "tooltip": false,
-        "on-click": "rofi -show drun"
+        "tooltip": true,
+        "on-click": "rofi -show drun",
+        "tooltip-format": "click: apps · right-click: settings",
+        "on-click-right": "~/.local/bin/rice-settings"
     },
     "hyprland/workspaces": {
         "on-click": "activate",
@@ -155,7 +157,8 @@
         "return-type": "json",
         "interval": "once",
         "signal": 9,
-        "on-click": "~/.local/bin/nightlight toggle"
+        "on-click": "~/.local/bin/nightlight toggle",
+        "on-click-right": "~/.local/bin/rice-settings nightlight"
     },
     "custom/recording": {
         "exec": "~/.local/bin/screenrec status",

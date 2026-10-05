@@ -2,10 +2,16 @@
 # Night light (blue-light filter) via hyprsunset. Super+N toggles it; the
 # waybar module calls `nightlight status` and gets JSON back.
 #
-#   nightlight toggle | on | off | status
-# Temperature: NIGHTLIGHT_TEMP (default 4000 K).
+#   nightlight toggle | on | off | restart | status
+# Temperature: temp= in ~/.config/hypr-rice/nightlight (set from the settings
+# app), else NIGHTLIGHT_TEMP, else 4000 K.
 
 temp=${NIGHTLIGHT_TEMP:-4000}
+conf="$HOME/.config/hypr-rice/nightlight"
+if [[ -f $conf ]]; then
+    t=$(sed -n 's/^temp=\([0-9]\{4\}\)$/\1/p' "$conf")
+    [[ -n $t ]] && temp=$t
+fi
 
 running() { pgrep -x hyprsunset >/dev/null; }
 
@@ -29,5 +35,6 @@ case "${1:-toggle}" in
             printf '{"text":"󰖨","class":"off","tooltip":"Night light off"}\n'
         fi
         ;;
-    *) echo "usage: nightlight [toggle|on|off|status]" >&2; exit 1 ;;
+    restart) if running; then off; sleep 0.3; on; fi; signal_bar ;;
+    *) echo "usage: nightlight [toggle|on|off|restart|status]" >&2; exit 1 ;;
 esac
