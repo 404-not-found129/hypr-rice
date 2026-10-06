@@ -152,7 +152,9 @@ def play(video):
     if player_running() and playing_path() == str(video):
         return
     stop()
-    opts = ("no-audio loop hwdec=auto panscan=1.0 "
+    # load-scripts=no: no mpv-mpris, so the wallpaper never shows up as a
+    # "now playing" player (bar, fastfetch) or grabs the media keys
+    opts = ("no-audio loop hwdec=auto panscan=1.0 load-scripts=no "
             f"input-ipc-server={SOCK} really-quiet")
     # -p: pause while the wallpaper is fully covered (fullscreen apps)
     subprocess.Popen(["setsid", "mpvpaper", "-p", "-o", opts, "*", str(video)],
