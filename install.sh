@@ -191,9 +191,10 @@ for bp in "$HOME/.config/aether/blueprints/"*.json; do
     || warn "cursor set for $t failed to build (will retry on first switch)"
 done
 
-# Live wallpapers: real animated videos for every theme (moewalls.com).
+# Live wallpapers: non-AI animated art for every theme (hand-made pixel/anime
+# loops and in-game captures from moewalls.com; real forest footage for everforest).
 # Big download, so ask; `livewall-fetch` can be run any time later too.
-read -rp "Download live wallpapers for every theme (~3 GB)? [y/N] " lw
+read -rp "Download live wallpapers for every theme (~2.5 GB)? [y/N] " lw
 if [[ ${lw,,} == y* ]]; then
   info "Downloading live wallpapers..."
   python3 "$HOME/.local/bin/livewall-fetch" --manifest "$HOME/.config/hypr-rice/live-manifest.txt" \

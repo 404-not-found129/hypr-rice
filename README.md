@@ -80,15 +80,20 @@ Press **`Super+/`** for the full, searchable list (read live from your
 
 ## Extras
 
-- **Live wallpapers.** Every theme can run on real animated wallpapers:
-  `livewall-fetch` downloads 55 hand-picked videos from
-  [MoeWalls](https://moewalls.com) (listed in `wallpapers/live-manifest.txt`,
-  ~3 GB, offered by the installer) into each theme's collection, makes a
-  poster frame for each (Aether pulls the theme colors from it), and points
-  every theme at its video, so applying a theme or cycling wallpapers plays
-  real motion. `--archive-stills` moves the old stills to
-  `~/Pictures/wallpapers/stills-archive/`. The videos stay on your machine
-  (fan-made, free for personal use) and are not part of this repo.
+- **Live wallpapers.** Every theme runs on animated wallpapers with no
+  AI-generated content: `livewall-fetch` downloads 56 hand-picked videos
+  (listed in `wallpapers/live-manifest.txt`, ~2.5 GB, offered by the
+  installer) into each theme's collection --
+  **hand-made pixel art, anime and painted loops** for the art themes (all
+  uploaded to [MoeWalls](https://moewalls.com) before July 2022, i.e. before
+  AI video generation existed), **in-game captures** (1440p-8K) for the game
+  themes, and **real 4K forest footage** from
+  [Pexels](https://www.pexels.com/license/) for everforest only (cross-faded
+  end-into-start so it loops seamlessly). Each gets a poster frame (Aether
+  pulls the theme colors from it) and every theme is pointed at its video,
+  so applying a theme or cycling wallpapers plays it. `--archive-stills`
+  moves old stills to `~/Pictures/wallpapers/stills-archive/`. The videos
+  stay on your machine and are not part of this repo.
   Toggle with `Super+Alt+W`, the bar's quick drawer, or the settings app;
   with live mode off the poster frame shows instead. Playback is
   [mpvpaper](https://github.com/GhostNaN/mpvpaper) (pauses behind

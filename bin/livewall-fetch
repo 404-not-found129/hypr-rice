@@ -2,12 +2,20 @@
 """Download real live wallpapers for every theme and make them the themes'
 wallpapers.
 
-Reads wallpapers/live-manifest.txt (theme + moewalls.com page per line),
-downloads each video into ~/Pictures/wallpapers/collections/<theme>/,
-checks it decodes, makes its poster frame (Aether extracts the theme colors
-from it), and points each theme's blueprint at its default video's poster,
-so applying a theme plays its video. Safe to re-run: finished downloads are
-skipped.
+Reads wallpapers/live-manifest.txt and downloads each video into
+~/Pictures/wallpapers/collections/<theme>/. Two kinds of source:
+
+  * a moewalls.com page -- in-game captures made as wallpapers (already
+    loop); the download link is resolved from the page;
+  * a Pexels file link (videos.pexels.com) -- real camera footage, which
+    Pexels requires to be free of generative AI. Not made to loop, so the
+    clip's last 0.8 s is cross-faded into its first with frame-exact
+    weights (and >30 fps is brought down to 30 to keep 4K decoding light).
+
+Each video is checked to decode, gets a poster frame (Aether extracts the
+theme colors from it), and each theme's blueprint is pointed at its default
+video's poster, so applying a theme plays its video. Safe to re-run:
+finished downloads are skipped.
 
   livewall-fetch                   download + set theme defaults
   livewall-fetch --archive-stills  also move the theme's still images to
@@ -15,8 +23,9 @@ skipped.
   livewall-fetch --manifest FILE   use another manifest
   livewall-fetch --dry-run         list what would be downloaded, with sizes
 
-The videos are fan-made wallpapers from moewalls.com, free for personal
-desktop use; they stay on this machine.
+Manifest lines: <theme> <url> [name=<file-stem>] [default]
+The videos are free for personal desktop use (Pexels license; moewalls
+wallpapers); they stay on this machine.
 """
 import argparse
 import json
@@ -24,6 +33,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -44,12 +54,23 @@ def manifest(path):
     for line in Path(path).read_text().splitlines():
         parts = line.split()
         if len(parts) >= 2 and not parts[0].startswith("#"):
-            entries.append({"theme": parts[0], "page": parts[1], "default": "default" in parts[2:]})
+            opts = dict(p.split("=", 1) for p in parts[2:] if "=" in p)
+            entries.append({"theme": parts[0], "page": parts[1], "name": opts.get("name"),
+                            "default": "default" in parts[2:]})
     return entries
 
 
+def is_pexels(entry):
+    return "videos.pexels.com/" in entry["page"]
+
+
 def resolve(entry):
-    """moewalls page -> (download url, file name, size)."""
+    """manifest entry -> (download url, file name, size)."""
+    if is_pexels(entry):
+        url = entry["page"]
+        with urllib.request.urlopen(urllib.request.Request(url, method="HEAD", headers=UA), timeout=30) as r:
+            size = int(r.headers.get("Content-Length", 0))
+        return url, (entry["name"] or Path(url).stem) + ".mp4", size
     req = urllib.request.Request(entry["page"], headers=UA)
     html = urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "replace")
     m = re.search(r'id="moe-download"[^>]*data-url="([^"]+)"', html)
@@ -71,11 +92,51 @@ def valid(path):
     return r.returncode == 0 and "," in r.stdout
 
 
+def make_loop(src, dest):
+    """Frame-exact cross-fade of the clip's end into its start, so it loops
+    without a jump: output = frames K..N-K-1, then the last K frames with the
+    first K faded in over them (alpha 0 -> 1). The first mixed frame is pure
+    frame N-K (continuing the body) and the last is pure frame K-1 (followed,
+    on loop, by frame K)."""
+    work = Path(tempfile.mkdtemp(prefix="livewall-loop-"))
+    try:
+        # v:0 -- some files carry a second "video" stream (an embedded thumbnail)
+        rate = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                               "stream=r_frame_rate", "-of", "csv=p=0", str(src)],
+                              capture_output=True, text=True).stdout.split()[0]
+        num, den = (int(x) for x in rate.split("/"))
+        if num > 31 * den:                      # 4K at 50/60 fps is heavy on three screens
+            mid = work / "30fps.mp4"
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-an", "-vf", "fps=30",
+                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", str(mid)], check=True)
+            src, fps = mid, 30
+        else:
+            fps = round(num / den)
+        n = int(subprocess.run(["ffprobe", "-v", "error", "-count_packets", "-select_streams", "v:0",
+                                "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", str(src)],
+                               capture_output=True, text=True).stdout.split()[0].rstrip(","))
+        k = max(2, min(n // 4, round(0.8 * fps)))
+        graph = (f"[0:v:0]split=3[a][b][c];"
+                 f"[a]trim=start_frame={k}:end_frame={n - k},setpts=PTS-STARTPTS[body];"
+                 f"[b]trim=start_frame={n - k}:end_frame={n},setpts=PTS-STARTPTS[tail];"
+                 f"[c]trim=start_frame=0:end_frame={k},setpts=PTS-STARTPTS,format=yuva420p,"
+                 f"fade=t=in:s=0:n={k - 1}:alpha=1[head];"
+                 f"[tail][head]overlay=format=auto,format=yuv420p[mix];"
+                 f"[body][mix]concat=n=2:v=1:a=0")
+        part = dest.with_suffix(".loop.mp4")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-an", "-filter_complex", graph,
+                        "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+                        "-movflags", "+faststart", str(part)], check=True)
+        part.replace(dest)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def fetch(entry):
     url, name, size = resolve(entry)
     dest = COLLECTIONS / entry["theme"] / name
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.exists() and (not size or dest.stat().st_size == size) and valid(dest):
+    if dest.exists() and valid(dest) and (is_pexels(entry) or not size or dest.stat().st_size == size):
         return dest, "already here"
     part = dest.with_suffix(dest.suffix + ".part")
     req = urllib.request.Request(url, headers={**UA, "Referer": entry["page"]})
@@ -87,6 +148,12 @@ def fetch(entry):
     if not valid(part):
         part.unlink(missing_ok=True)
         raise RuntimeError("downloaded file is not a playable video")
+    if is_pexels(entry):
+        try:
+            make_loop(part, dest)
+        finally:
+            part.unlink(missing_ok=True)
+        return dest, f"{size / 1e6:.0f} MB, made seamless"
     part.replace(dest)
     return dest, f"{size / 1e6:.0f} MB"
 
@@ -148,9 +215,9 @@ def main():
     # one download per page: ashen-flame shares elden-ring's folder and video
     pages = list(dict.fromkeys(e["page"] for e in entries))
     first = {p: next(e for e in entries if e["page"] == p) for p in pages}
-    print(f"Downloading {len(pages)} live wallpapers (4 at a time)…")
+    print(f"Downloading {len(pages)} live wallpapers (3 at a time)…")
     by_page, failed = {}, []
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:   # 4K loop encodes are CPU-heavy
         futs = {ex.submit(fetch, first[p]): p for p in pages}
         for n, f in enumerate(as_completed(futs), 1):
             p = futs[f]
