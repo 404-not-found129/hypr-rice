@@ -80,9 +80,20 @@ Press **`Super+/`** for the full, searchable list (read live from your
 
 ## Extras
 
-- **Live wallpapers.** Turn on with `Super+Alt+W`, the bar's quick drawer,
-  or the settings app. Playback is [mpvpaper](https://github.com/GhostNaN/mpvpaper)
-  (pauses behind fullscreen apps), in this order of preference:
+- **Live wallpapers.** Every theme can run on real animated wallpapers:
+  `livewall-fetch` downloads 55 hand-picked videos from
+  [MoeWalls](https://moewalls.com) (listed in `wallpapers/live-manifest.txt`,
+  ~3 GB, offered by the installer) into each theme's collection, makes a
+  poster frame for each (Aether pulls the theme colors from it), and points
+  every theme at its video, so applying a theme or cycling wallpapers plays
+  real motion. `--archive-stills` moves the old stills to
+  `~/Pictures/wallpapers/stills-archive/`. The videos stay on your machine
+  (fan-made, free for personal use) and are not part of this repo.
+  Toggle with `Super+Alt+W`, the bar's quick drawer, or the settings app;
+  with live mode off the poster frame shows instead. Playback is
+  [mpvpaper](https://github.com/GhostNaN/mpvpaper) (pauses behind
+  fullscreen apps, never shows up as a media player). For a still that has
+  no video, in this order:
   1. **AI-animated** -- `livewall-ai` sends each wallpaper to
      [Higgsfield](https://docs.higgsfield.ai) (Wan 2.7 image-to-video) with
      the wallpaper as both first and last frame, so the clip loops
@@ -104,9 +115,8 @@ Press **`Super+/`** for the full, searchable list (read live from your
      untouched image with theme-matched snow / embers / rain / fireflies /
      petals / stardust, rendered locally with ffmpeg. `livewall effects off`
      (or the settings switch) shows the plain still instead.
-  3. **Your own videos**: drop `.mp4 .webm .mkv .mov .gif` into a theme's
-     collection; wallpaper cycling plays them, with colors from a poster
-     frame.
+  3. **Your own videos** work like the fetched ones: drop
+     `.mp4 .webm .mkv .mov .gif` into a theme's collection.
 - **Clean bar.** Three floating islands (workspaces / clock + media /
   status). Status is icon-only with details in tooltips; tray, quick toggles
   (theme, live wallpaper, night light, caffeine, settings) and system stats

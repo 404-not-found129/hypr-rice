@@ -17,13 +17,13 @@ shopt -s nullglob
 walls=("$dir"/*.{jpg,jpeg,png,webp,mp4,webm,mkv,mov,gif})
 (( ${#walls[@]} )) || exit 1
 
-# Videos are applied through a poster frame (named <video-stem>-<hash>.jpg),
-# so match on the stem as well as the exact name.
+# Videos are applied through a poster frame named <video-stem>.jpg, so match
+# on the stem as well as the exact name.
 cur=$(basename "$(readlink "$HOME/Pictures/wallpapers/wall.png" 2>/dev/null)")
 idx=-1
 for i in "${!walls[@]}"; do
     b=$(basename "${walls[$i]}")
-    [[ $b == "$cur" || $cur == "${b%.*}-"*.jpg ]] && idx=$i && break
+    [[ $b == "$cur" || $cur == "${b%.*}.jpg" ]] && idx=$i && break
 done
 
 n=${#walls[@]}

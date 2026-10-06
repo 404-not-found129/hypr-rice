@@ -1,0 +1,74 @@
+# Live wallpapers per theme, fetched by `livewall-fetch` from moewalls.com (free for
+# personal desktop use; videos are downloaded to your machine, never stored in this repo).
+# Format: <theme> <moewalls page url> [default]  -- the first line of a theme (or the
+# one marked default) becomes that theme's default wallpaper.
+
+elden-ring https://moewalls.com/games/stormveil-castle-elden-ring-live-wallpaper/
+elden-ring https://moewalls.com/games/midra-lord-of-frenzied-flame-elden-ring-live-wallpaper/
+elden-ring https://moewalls.com/games/ranni-age-of-stars-elden-ring-live-wallpaper/
+elden-ring https://moewalls.com/games/elden-ring-shadow-of-the-erdtree-2-live-wallpaper/
+elden-ring https://moewalls.com/games/shaman-village-elden-ring-shadow-of-the-erdtree-live-wallpaper/
+elden-ring https://moewalls.com/games/elden-ring-2-live-wallpaper/
+
+god-of-war https://moewalls.com/fantasy/the-mountain-god-of-war-live-wallpaper/
+god-of-war https://moewalls.com/games/norse-mountain-god-of-war-live-wallpaper/
+god-of-war https://moewalls.com/games/kratos-cut-down-the-tree-god-of-war-live-wallpaper/
+god-of-war https://moewalls.com/games/kratos-in-the-snow-god-of-war-live-wallpaper/
+
+fallout https://moewalls.com/landscape/sanctuary-hills-fallout-4-live-wallpaper/
+fallout https://moewalls.com/games/fallout-live-wallpaper/
+fallout https://moewalls.com/movies/lucy-maclean-fallout-live-wallpaper/
+fallout https://moewalls.com/games/t-51-power-armor-fallout-76-live-wallpaper/
+
+cyberpunk-2077 https://moewalls.com/sci-fi/night-city-street-cyberpunk-2077-live-wallpaper/
+cyberpunk-2077 https://moewalls.com/games/cyberpunk-2077-night-city-2-live-wallpaper/
+cyberpunk-2077 https://moewalls.com/games/cyberpunk-2077-gloomy-rainy-day-live-wallpaper/
+cyberpunk-2077 https://moewalls.com/games/cyberpunk-2077-judys-apartment-live-wallpaper/
+cyberpunk-2077 https://moewalls.com/games/night-city-daily-life-cyberpunk-2077-live-wallpaper/
+
+tokyo-night https://moewalls.com/landscape/tokyo-night-live-wallpaper/
+tokyo-night https://moewalls.com/lifestyle/tokyo-rainy-night-live-wallpaper/
+tokyo-night https://moewalls.com/lifestyle/shibuya-street-at-night-live-wallpaper/
+tokyo-night https://moewalls.com/landscape/anime-cityscape-in-the-rain-live-wallpaper/
+
+gruvbox https://moewalls.com/pixel-art/90s-sunset-retro-room-pixel-live-wallpaper/
+gruvbox https://moewalls.com/pixel-art/90s-retro-room-pixel-live-wallpaper/
+gruvbox https://moewalls.com/lifestyle/90s-retro-gamer-room-live-wallpaper/
+
+catppuccin-mocha https://moewalls.com/animal/midnight-magic-cat-live-wallpaper/
+catppuccin-mocha https://moewalls.com/lifestyle/lonely-cat-watching-aurora-night-sky-while-its-raining-live-wallpaper/
+catppuccin-mocha https://moewalls.com/lifestyle/a-cozy-lo-fi-night-for-study-live-wallpaper/
+catppuccin-mocha https://moewalls.com/lifestyle/black-cat-watching-the-moon-through-the-window-live-wallpaper/
+
+catppuccin-latte https://moewalls.com/landscape/mount-fuji-sakura-lake-live-wallpaper/
+catppuccin-latte https://moewalls.com/games/sakura-tree-lake-neverness-to-everness-live-wallpaper/
+catppuccin-latte https://moewalls.com/lifestyle/train-sakura-live-wallpaper/
+catppuccin-latte https://moewalls.com/landscape/sakura-lake-live-wallpaper/
+
+nord https://moewalls.com/landscape/snow-mountain-house-live-wallpaper/
+nord https://moewalls.com/landscape/snow-mountain-live-wallpaper/
+nord https://moewalls.com/landscape/snowy-river-live-wallpaper/
+nord https://moewalls.com/landscape/starry-night-forest-mountains-live-wallpaper/
+nord https://moewalls.com/landscape/aurora-mountain-live-wallpaper/
+
+rose-pine https://moewalls.com/landscape/sunset-pink-ocean-live-wallpaper/
+rose-pine https://moewalls.com/landscape/pink-forest-sunset-live-wallpaper/
+rose-pine https://moewalls.com/fantasy/tower-pink-clouds-live-wallpaper/
+rose-pine https://moewalls.com/lifestyle/pink-clouds-train-live-wallpaper/
+
+everforest https://moewalls.com/landscape/forest-pines-live-wallpaper/
+everforest https://moewalls.com/games/zen-bamboo-forest-live-wallpaper/
+everforest https://moewalls.com/lifestyle/calm-in-the-forest-live-wallpaper/
+everforest https://moewalls.com/landscape/green-tree-live-wallpaper/
+
+kanagawa https://moewalls.com/abstract/the-great-wave-off-kanagawa-live-wallpaper/
+kanagawa https://moewalls.com/abstract/wave-kanagawa-red-sun-retro-live-wallpaper/
+kanagawa https://moewalls.com/landscape/japanese-traditional-temple-mount-fuji-live-wallpaper/
+kanagawa https://moewalls.com/lifestyle/rain-in-japanese-village-live-wallpaper/
+
+dracula https://moewalls.com/landscape/purple-night-moon-clouds-live-wallpaper/
+dracula https://moewalls.com/lifestyle/neon-purple-midnight-chill-live-wallpaper/
+dracula https://moewalls.com/fantasy/purple-tree-at-sunset-live-wallpaper/
+dracula https://moewalls.com/landscape/purple-moonlight-forest-live-wallpaper/
+
+ashen-flame https://moewalls.com/games/midra-lord-of-frenzied-flame-elden-ring-live-wallpaper/ default

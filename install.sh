@@ -98,6 +98,7 @@ cp "$REPO/config/aether/blueprints/"*.json "$HOME/.config/aether/blueprints/"
 # Theme groups + day/night schedule settings. -n: never clobber your edits.
 mkdir -p "$HOME/.config/hypr-rice"
 cp -n "$REPO/config/hypr-rice/"* "$HOME/.config/hypr-rice/"
+cp "$REPO/wallpapers/live-manifest.txt" "$HOME/.config/hypr-rice/live-manifest.txt"
 
 mkdir -p "$HOME/.local/bin"
 cp "$REPO/bin/"* "$HOME/.local/bin/"
@@ -189,6 +190,16 @@ for bp in "$HOME/.config/aether/blueprints/"*.json; do
   python3 "$HOME/.local/bin/game-cursors" --build "$t" >/dev/null 2>&1 \
     || warn "cursor set for $t failed to build (will retry on first switch)"
 done
+
+# Live wallpapers: real animated videos for every theme (moewalls.com).
+# Big download, so ask; `livewall-fetch` can be run any time later too.
+read -rp "Download live wallpapers for every theme (~3 GB)? [y/N] " lw
+if [[ ${lw,,} == y* ]]; then
+  info "Downloading live wallpapers..."
+  python3 "$HOME/.local/bin/livewall-fetch" --manifest "$HOME/.config/hypr-rice/live-manifest.txt" \
+    || warn "Some live wallpapers failed -- re-run livewall-fetch later."
+  python3 "$HOME/.local/bin/livewall" on >/dev/null 2>&1 || true
+fi
 
 # eza (ls) colors + light/dark preference for the default theme
 python3 "$HOME/.local/bin/eza-theme" >/dev/null 2>&1 || true

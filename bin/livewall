@@ -13,9 +13,10 @@ in this order of preference:
     once per wallpaper with ffmpeg, cached in ~/.cache/hypr-rice/live/.
     Played while live mode is on, unless the fallback is turned off
     (`livewall effects off`).
-  * Your own videos: drop .mp4/.webm/.mkv/.mov/.gif into a theme's
-    collection. wallcycle makes a poster frame for Aether's colors and
-    links the video here, so it always plays when it's the wallpaper.
+  * Video wallpapers (`livewall-fetch`, or your own .mp4/.webm/.mkv/.mov/
+    .gif dropped into a theme's collection): wallcycle and the theme
+    blueprints apply a poster frame (~/Pictures/wallpapers/posters/) for
+    Aether's colors, and the video plays over it while live mode is on.
 
   livewall on | off | toggle   live mode (also in rice-settings)
   livewall effects on | off    particle fallback for not-yet-animated wallpapers
@@ -27,7 +28,6 @@ in this order of preference:
   livewall prerender [theme]       pre-render every still of a theme (background)
   livewall poster <video>          print the poster path (makes it if needed)
 """
-import hashlib
 import json
 import os
 import re
@@ -39,7 +39,9 @@ from pathlib import Path
 HOME = Path.home()
 CACHE = HOME / ".cache/hypr-rice/live"
 AI = HOME / ".local/share/hypr-rice/live-ai"
-POSTERS = HOME / ".cache/hypr-rice/live-posters"
+# Poster frames live next to the wallpapers (not in a cache): theme blueprints
+# point at them as the theme's wallpaper.
+POSTERS = HOME / "Pictures/wallpapers/posters"
 CONF = HOME / ".config/hypr-rice/live"
 STATE = HOME / ".config/aether/current-theme"
 BACKGROUNDS = HOME / ".config/aether/theme/backgrounds"
@@ -234,15 +236,17 @@ def make(image, effect=None, theme=None):
 
 
 def poster(video):
-    """Still frame for Aether to extract colors from (cached by path+mtime)."""
+    """Still frame of a video wallpaper, for Aether to extract colors from and
+    to show while live mode is off. Named after the video (<stem>.jpg), so
+    the applied still always maps back to its video; remade if the video is
+    newer. Also links the video as that still's live counterpart."""
     video = Path(video)
     POSTERS.mkdir(parents=True, exist_ok=True)
-    key = hashlib.md5(f"{video.resolve()}:{video.stat().st_mtime_ns}".encode()).hexdigest()[:10]
-    out = POSTERS / f"{video.stem}-{key}.jpg"
-    if not out.exists():
+    out = POSTERS / f"{video.stem}.jpg"
+    if not out.exists() or out.stat().st_mtime < video.stat().st_mtime:
+        # a frame 1 s in (past any fade-in), full resolution
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "1", "-i", str(video),
                         "-frames:v", "1", "-q:v", "2", str(out)], check=True)
-    # link the video as this poster's live counterpart (always plays)
     CACHE.mkdir(parents=True, exist_ok=True)
     link = CACHE / f"{out.stem}.mp4"
     if link.is_symlink() or link.exists():
@@ -257,10 +261,10 @@ def sync():
     if still is None:
         return stop()
     live = live_for(still)
+    if not enabled():
+        return stop()          # live mode off: the still/poster stays up
     if live.exists() and is_user_video(live):
         return play(live)
-    if not enabled():
-        return stop()
     if ai_for(still).exists():
         return play(ai_for(still))
     if not effects_fallback():
