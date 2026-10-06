@@ -88,13 +88,17 @@ Press **`Super+/`** for the full, searchable list (read live from your
      the wallpaper as both first and last frame, so the clip loops
      seamlessly, and a theme-specific prompt for gentle ambient motion
      (drifting embers, snowfall, rolling waves, neon flicker...) with a
-     static camera. Uses credits on **your** Higgsfield account: put
-     `HF_API_KEY_ID=` / `HF_API_KEY_SECRET=` in
-     `~/.config/hypr-rice/higgsfield` (`chmod 600`), then run
-     `livewall-ai` (active theme) or `livewall-ai --all`. It shows
-     Higgsfield's cost estimate for the batch and asks before generating;
-     interrupted runs resume without paying twice. Clips stay in
-     `~/.local/share/hypr-rice/live-ai/` (not in this repo).
+     static camera; the clip is then cross-blended end-into-start locally so
+     the loop point is seamless. Uses credits on **your** Higgsfield
+     account, signed in with the Higgsfield CLI (`higgsfield auth login`) or
+     with API keys (`HF_API_KEY_ID=` / `HF_API_KEY_SECRET=` in
+     `~/.config/hypr-rice/higgsfield`, `chmod 600`). Run `livewall-ai`
+     (active theme) or `livewall-ai --all`: it shows the cost and your
+     balance, caps the run at what you can afford (`--max N` to choose),
+     and asks before generating. A paid clip whose download fails is
+     resumed on the next run, never regenerated. Clips stay in
+     `~/.local/share/hypr-rice/live-ai/` (not in this repo); a 4 s 1080p
+     clip costs about 10 credits.
      `livewall-ai --status` shows progress per theme.
   2. **Particle effect** fallback for wallpapers not animated yet: the
      untouched image with theme-matched snow / embers / rain / fireflies /
