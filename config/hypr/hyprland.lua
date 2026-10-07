@@ -91,6 +91,12 @@ local look = {
     animations       = true,
     inactive_opacity = 0.95,
     terminal_opacity = 0.72,
+    shadows          = true,
+    workspaces_per_monitor = 3,
+    follow_mouse     = true,
+    sensitivity      = 0,     -- -1.0 .. 1.0
+    square_corners   = false, -- windows (and, via the settings app, the bar)
+    bar_position     = "top", -- applied to waybar by the settings app
 }
 do
     local ok, user = pcall(dofile, os.getenv("HOME") .. "/.config/hypr-rice/look.lua")
@@ -121,14 +127,14 @@ hl.config({
     },
 
     decoration = {
-        rounding       = look.rounding,
+        rounding       = look.square_corners and 0 or look.rounding,
         rounding_power = 2,
 
         active_opacity   = 1.0,
         inactive_opacity = look.inactive_opacity,
 
         shadow = {
-            enabled      = true,
+            enabled      = look.shadows,
             range        = 20,
             render_power = 3,
             color        = 0xcc1a1a2e,
@@ -228,8 +234,8 @@ hl.config({
     input = {
         kb_layout = "us",
 
-        follow_mouse  = 1,
-        sensitivity   = 0,
+        follow_mouse  = look.follow_mouse and 1 or 0,
+        sensitivity   = look.sensitivity,
         accel_profile = "flat",
 
         touchpad = {
@@ -250,105 +256,187 @@ hl.gesture({
 ---- KEYBINDINGS ----
 ---------------------
 
-local mainMod = "SUPER"
-
--- Apps
-hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal))
-hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager))
-hl.bind(mainMod .. " + Space",  hl.dsp.exec_cmd(menu))
-
--- Window management
-hl.bind(mainMod .. " + Q", hl.dsp.window.close())
-hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
-hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))
-hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
-hl.bind(mainMod .. " + M", hl.dsp.window.fullscreen({ mode = "maximized",  action = "toggle" }))
-
--- Session
-hl.bind(mainMod .. " + L",      hl.dsp.exec_cmd("hyprlock"))
-hl.bind(mainMod .. " + Escape", hl.dsp.exec_cmd("wlogout"))
-
--- Utilities
-hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd("hyprpicker -a"))
-hl.bind(mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("walker -m clipboard"))
-hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("swaync-client -t -sw"))
-
--- Screenshots (saved to ~/Pictures/screenshots + clipboard)
-hl.bind("Print",           hl.dsp.exec_cmd("hyprshot -m region -o ~/Pictures/screenshots"))
-hl.bind("SHIFT + Print",   hl.dsp.exec_cmd("hyprshot -m window -o ~/Pictures/screenshots"))
-hl.bind("CTRL + Print",    hl.dsp.exec_cmd("hyprshot -m output -o ~/Pictures/screenshots"))
-
--- Themes (Aether blueprints, see `themectl`)
-hl.bind(mainMod .. " + T",          hl.dsp.exec_cmd("~/.local/bin/theme-picker"))     -- desc: theme picker
-hl.bind(mainMod .. " + SHIFT + T",  hl.dsp.exec_cmd("~/.local/bin/themectl random"))  -- desc: random theme
-hl.bind(mainMod .. " + CTRL + T",   hl.dsp.exec_cmd("~/.local/bin/themectl auto"))    -- desc: theme from current wallpaper
-
--- Wallpaper cycling (within the active theme's collection, themed via Aether)
-hl.bind(mainMod .. " + right",     hl.dsp.exec_cmd("~/.local/bin/wallcycle next"))    -- desc: next wallpaper
-hl.bind(mainMod .. " + left",      hl.dsp.exec_cmd("~/.local/bin/wallcycle prev"))    -- desc: previous wallpaper
-hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("~/.local/bin/wallcycle random"))  -- desc: random wallpaper
-hl.bind(mainMod .. " + ALT + W",   hl.dsp.exec_cmd("~/.local/bin/livewall toggle"))   -- desc: live wallpaper on/off
-
--- Extras
-hl.bind(mainMod .. " + slash",      hl.dsp.exec_cmd("~/.local/bin/keybinds"))           -- desc: this cheat sheet
-hl.bind(mainMod .. " + comma",      hl.dsp.exec_cmd("~/.local/bin/rice-settings"))      -- desc: settings
-hl.bind(mainMod .. " + N",          hl.dsp.exec_cmd("~/.local/bin/nightlight toggle"))  -- desc: night light
-hl.bind(mainMod .. " + period",     hl.dsp.exec_cmd("walker -m symbols"))               -- desc: emoji / symbol picker
-hl.bind(mainMod .. " + SHIFT + R",  hl.dsp.exec_cmd("~/.local/bin/screenrec region"))   -- desc: record region (again to stop)
-hl.bind(mainMod .. " + ALT + R",    hl.dsp.exec_cmd("~/.local/bin/screenrec screen"))   -- desc: record screen (again to stop)
-
--- Focus with mainMod + arrows
-
-hl.bind(mainMod .. " + ALT + left",  hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + ALT + right", hl.dsp.focus({ direction = "right" }))
-hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
-
--- Move window with mainMod + SHIFT + arrows
-hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.window.move({ direction = "l" }))
-hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "r" }))
-hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.move({ direction = "u" }))
-hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.move({ direction = "d" }))
-
--- Resize with mainMod + CTRL + arrows
-hl.bind(mainMod .. " + CTRL + left",  hl.dsp.window.resize({ x = -40, y = 0,   relative = true }), { repeating = true })
-hl.bind(mainMod .. " + CTRL + right", hl.dsp.window.resize({ x = 40,  y = 0,   relative = true }), { repeating = true })
-hl.bind(mainMod .. " + CTRL + up",    hl.dsp.window.resize({ x = 0,   y = -40, relative = true }), { repeating = true })
-hl.bind(mainMod .. " + CTRL + down",  hl.dsp.window.resize({ x = 0,   y = 40,  relative = true }), { repeating = true })
-
--- Workspaces: mainMod + [0-9] to switch, + SHIFT to move window
-for i = 1, 10 do
-    local key = i % 10
-    hl.bind(mainMod .. " + " .. key,         hl.dsp.focus({ workspace = i }))
-    hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+-- Every bind has a description, which is also its stable id. The settings
+-- app (Keybinds page) saves your changes to ~/.config/hypr-rice/binds.lua:
+--   return {
+--     keys     = { ["close window"] = "SUPER + W" },   -- new keys, by description
+--     disabled = { ["pseudo-tile"] = true },
+--     apps     = { { keys = "SUPER + B", name = "Firefox", cmd = "gtk-launch firefox" } },
+--   }
+local user_binds = { keys = {}, disabled = {}, apps = {} }
+do
+    local ok, t = pcall(dofile, os.getenv("HOME") .. "/.config/hypr-rice/binds.lua")
+    if ok and type(t) == "table" then
+        for k, v in pairs(t) do user_binds[k] = v end
+    end
 end
 
-hl.bind(mainMod .. " + Tab", hl.dsp.focus({ workspace = "previous" }))
+-- description -> dispatcher, so the cheat sheet can run any bind:
+--   hyprctl dispatch 'rice_binds["random theme"]'
+_G.rice_binds = {}
+
+local function bind(keys, description, dispatcher, opts)
+    if user_binds.disabled[description] then return end
+    opts = opts or {}
+    opts.description = description
+    _G.rice_binds[description] = dispatcher
+    hl.bind(user_binds.keys[description] or keys, dispatcher, opts)
+end
+
+local mainMod = "SUPER"
+local bin = "~/.local/bin/"
+
+-- Apps
+bind(mainMod .. " + Return", "terminal",     hl.dsp.exec_cmd(terminal))
+bind(mainMod .. " + E",      "file manager", hl.dsp.exec_cmd(fileManager))
+bind(mainMod .. " + Space",  "app launcher", hl.dsp.exec_cmd(menu))
+
+-- Window management
+bind(mainMod .. " + Q", "close window",      hl.dsp.window.close())
+bind(mainMod .. " + V", "toggle floating",   hl.dsp.window.float({ action = "toggle" }))
+bind(mainMod .. " + P", "pseudo-tile",       hl.dsp.window.pseudo())
+bind(mainMod .. " + J", "toggle split",      hl.dsp.layout("togglesplit"))
+bind(mainMod .. " + F", "fullscreen",        hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
+bind(mainMod .. " + M", "maximize",          hl.dsp.window.fullscreen({ mode = "maximized",  action = "toggle" }))
+
+-- Session
+bind(mainMod .. " + L",      "lock screen",  hl.dsp.exec_cmd("hyprlock"))
+bind(mainMod .. " + Escape", "power menu",   hl.dsp.exec_cmd("wlogout"))
+
+-- Utilities
+bind(mainMod .. " + SHIFT + C", "color picker",       hl.dsp.exec_cmd("hyprpicker -a"))
+bind(mainMod .. " + SHIFT + V", "clipboard history",  hl.dsp.exec_cmd("walker -m clipboard"))
+bind(mainMod .. " + SHIFT + N", "notification center", hl.dsp.exec_cmd("swaync-client -t -sw"))
+bind(mainMod .. " + period",    "emoji / symbol picker", hl.dsp.exec_cmd("walker -m symbols"))
+
+-- Screenshots (saved to ~/Pictures/screenshots + clipboard) and recording
+bind("Print",         "screenshot region", hl.dsp.exec_cmd("hyprshot -m region -o ~/Pictures/screenshots"))
+bind("SHIFT + Print", "screenshot window", hl.dsp.exec_cmd("hyprshot -m window -o ~/Pictures/screenshots"))
+bind("CTRL + Print",  "screenshot screen", hl.dsp.exec_cmd("hyprshot -m output -o ~/Pictures/screenshots"))
+bind(mainMod .. " + SHIFT + R", "record region (again to stop)", hl.dsp.exec_cmd(bin .. "screenrec region"))
+bind(mainMod .. " + ALT + R",   "record screen (again to stop)", hl.dsp.exec_cmd(bin .. "screenrec screen"))
+
+-- Themes and wallpapers (see `themectl`)
+bind(mainMod .. " + T",         "theme picker",                 hl.dsp.exec_cmd(bin .. "theme-picker"))
+bind(mainMod .. " + SHIFT + T", "random theme",                 hl.dsp.exec_cmd(bin .. "themectl random"))
+bind(mainMod .. " + CTRL + T",  "theme from current wallpaper", hl.dsp.exec_cmd(bin .. "themectl auto"))
+bind(mainMod .. " + right",     "next wallpaper",               hl.dsp.exec_cmd(bin .. "wallcycle next"))
+bind(mainMod .. " + left",      "previous wallpaper",           hl.dsp.exec_cmd(bin .. "wallcycle prev"))
+bind(mainMod .. " + SHIFT + W", "random wallpaper",             hl.dsp.exec_cmd(bin .. "wallcycle random"))
+bind(mainMod .. " + ALT + W",   "live wallpaper on/off",        hl.dsp.exec_cmd(bin .. "livewall toggle"))
+
+-- Extras
+bind(mainMod .. " + slash", "keybind cheat sheet", hl.dsp.exec_cmd(bin .. "keybinds"))
+bind(mainMod .. " + comma", "settings",            hl.dsp.exec_cmd(bin .. "rice-settings"))
+bind(mainMod .. " + N",     "night light",         hl.dsp.exec_cmd(bin .. "nightlight toggle"))
+
+-- Focus / move / resize
+bind(mainMod .. " + ALT + left",  "focus left",  hl.dsp.focus({ direction = "left" }))
+bind(mainMod .. " + ALT + right", "focus right", hl.dsp.focus({ direction = "right" }))
+bind(mainMod .. " + up",          "focus up",    hl.dsp.focus({ direction = "up" }))
+bind(mainMod .. " + down",        "focus down",  hl.dsp.focus({ direction = "down" }))
+
+bind(mainMod .. " + SHIFT + left",  "move window left",  hl.dsp.window.move({ direction = "l" }))
+bind(mainMod .. " + SHIFT + right", "move window right", hl.dsp.window.move({ direction = "r" }))
+bind(mainMod .. " + SHIFT + up",    "move window up",    hl.dsp.window.move({ direction = "u" }))
+bind(mainMod .. " + SHIFT + down",  "move window down",  hl.dsp.window.move({ direction = "d" }))
+
+bind(mainMod .. " + CTRL + left",  "shrink width",  hl.dsp.window.resize({ x = -40, y = 0,   relative = true }), { repeating = true })
+bind(mainMod .. " + CTRL + right", "grow width",    hl.dsp.window.resize({ x = 40,  y = 0,   relative = true }), { repeating = true })
+bind(mainMod .. " + CTRL + up",    "shrink height", hl.dsp.window.resize({ x = 0,   y = -40, relative = true }), { repeating = true })
+bind(mainMod .. " + CTRL + down",  "grow height",   hl.dsp.window.resize({ x = 0,   y = 40,  relative = true }), { repeating = true })
+
+bind(mainMod .. " + mouse:272", "drag window",          hl.dsp.window.drag(),   { mouse = true })
+bind(mainMod .. " + mouse:273", "resize window (mouse)", hl.dsp.window.resize(), { mouse = true })
+
+-- Desktops: every monitor gets its own set (look.workspaces_per_monitor,
+-- default 3), numbered left to right: the leftmost monitor has 1-3, the
+-- next 4-6, and so on. SUPER + 1/2/3 always means "desktop 1/2/3 of the
+-- monitor you're on".
+local WS = look.workspaces_per_monitor
+
+local function monitors_ordered()
+    local ms = hl.get_monitors() or {}
+    table.sort(ms, function(a, b)
+        if a.x ~= b.x then return a.x < b.x end
+        return a.y < b.y
+    end)
+    return ms
+end
+
+local function ws_base(name)
+    for i, m in ipairs(monitors_ordered()) do
+        if m.name == name then return (i - 1) * WS end
+    end
+    return 0
+end
+
+local function place_workspaces()
+    for i, m in ipairs(monitors_ordered()) do
+        for n = 1, WS do
+            hl.workspace_rule({
+                workspace  = tostring((i - 1) * WS + n),
+                monitor    = m.name,
+                persistent = true,
+                default    = (n == 1),
+            })
+        end
+    end
+end
+place_workspaces()                        -- on reload (monitors known)
+hl.on("hyprland.start", place_workspaces) -- at login, once monitors exist
+hl.on("monitor.added", place_workspaces)
+
+local function on_this_monitor(n, move)
+    return function()
+        local m = hl.get_active_monitor()
+        local id = (m and ws_base(m.name) or 0) + n
+        if move then
+            hl.dispatch(hl.dsp.window.move({ workspace = id }))
+        else
+            hl.dispatch(hl.dsp.focus({ workspace = id }))
+        end
+    end
+end
+
+for n = 1, WS do
+    bind(mainMod .. " + " .. n,         "desktop " .. n,                 on_this_monitor(n))
+    bind(mainMod .. " + SHIFT + " .. n, "move window to desktop " .. n,  on_this_monitor(n, true))
+end
+
+bind(mainMod .. " + Tab",        "previous desktop",           hl.dsp.focus({ workspace = "previous" }))
+bind(mainMod .. " + mouse_down", "next desktop (this monitor)", hl.dsp.focus({ workspace = "m+1" }))
+bind(mainMod .. " + mouse_up",   "prev desktop (this monitor)", hl.dsp.focus({ workspace = "m-1" }))
 
 -- Scratchpad
-hl.bind(mainMod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
-hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
-
--- Scroll through workspaces with mainMod + wheel
-hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
-
--- Move/resize with mainMod + LMB/RMB drag
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+bind(mainMod .. " + S",         "toggle scratchpad",         hl.dsp.workspace.toggle_special("magic"))
+bind(mainMod .. " + SHIFT + S", "move window to scratchpad", hl.dsp.window.move({ workspace = "special:magic" }))
 
 -- Volume / media / brightness
-hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("pamixer -i 5"),                  { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("pamixer -d 5"),                  { locked = true, repeating = true })
-hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("pamixer -t"),                    { locked = true })
-hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("pamixer --default-source -t"),   { locked = true })
-hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true })
-hl.bind("XF86AudioPlay",         hl.dsp.exec_cmd("playerctl play-pause"),          { locked = true })
-hl.bind("XF86AudioPause",        hl.dsp.exec_cmd("playerctl play-pause"),          { locked = true })
-hl.bind("XF86AudioNext",         hl.dsp.exec_cmd("playerctl next"),                { locked = true })
-hl.bind("XF86AudioPrev",         hl.dsp.exec_cmd("playerctl previous"),            { locked = true })
+bind("XF86AudioRaiseVolume",  "volume up",       hl.dsp.exec_cmd("pamixer -i 5"),                  { locked = true, repeating = true })
+bind("XF86AudioLowerVolume",  "volume down",     hl.dsp.exec_cmd("pamixer -d 5"),                  { locked = true, repeating = true })
+bind("XF86AudioMute",         "mute",            hl.dsp.exec_cmd("pamixer -t"),                    { locked = true })
+bind("XF86AudioMicMute",      "mute microphone", hl.dsp.exec_cmd("pamixer --default-source -t"),   { locked = true })
+bind("XF86MonBrightnessUp",   "brightness up",   hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
+bind("XF86MonBrightnessDown", "brightness down", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true })
+bind("XF86AudioPlay",         "play / pause",    hl.dsp.exec_cmd("playerctl play-pause"),          { locked = true })
+bind("XF86AudioPause",        "pause",           hl.dsp.exec_cmd("playerctl play-pause"),          { locked = true })
+bind("XF86AudioNext",         "next track",      hl.dsp.exec_cmd("playerctl next"),                { locked = true })
+bind("XF86AudioPrev",         "previous track",  hl.dsp.exec_cmd("playerctl previous"),            { locked = true })
+
+-- Empty submap the settings app switches to while you press a new shortcut,
+-- so Hyprland doesn't act on the keys. Escape always leaves it (and still
+-- reaches the app, to cancel the dialog).
+hl.define_submap("rice_capture", function()
+    hl.bind("Escape", hl.dsp.submap("reset"), { non_consuming = true })
+end)
+
+-- Your app shortcuts (added in Settings -> Keybinds)
+for _, app in ipairs(user_binds.apps or {}) do
+    if app.keys and app.cmd then
+        bind(app.keys, "app: " .. (app.name or app.cmd), hl.dsp.exec_cmd(app.cmd))
+    end
+end
 
 
 ----------------------

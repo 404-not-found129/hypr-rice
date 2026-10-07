@@ -9,13 +9,15 @@ editing files by hand:
                -> ~/.config/hypr-rice/look.lua (read by hyprland.lua)
   Schedule     day/night themes and times -> ~/.config/hypr-rice/schedule
   Night light  on/off and temperature     -> ~/.config/hypr-rice/nightlight
-  Keybinds     searchable list, read live from hyprland.lua
+  Keybinds     change / turn off any shortcut, add app shortcuts
+               -> ~/.config/hypr-rice/binds.json (+ generated binds.lua)
   About        versions, active theme, config folders
 
 Every action goes through the same scripts the keybinds use (themectl,
 wallcycle, theme-schedule, nightlight), so behavior never diverges. The
 accent color follows the active theme.
 """
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -39,7 +41,15 @@ LOOK_DEFAULTS = {
     "gaps_in": 5, "gaps_out": 12, "border_size": 2, "rounding": 12,
     "blur": True, "animations": True,
     "inactive_opacity": 0.95, "terminal_opacity": 0.72,
+    "shadows": True, "workspaces_per_monitor": 3,
+    "follow_mouse": True, "sensitivity": 0.0,
+    "square_corners": False, "bar_position": "top",
 }
+BINDS_JSON = RICE / "binds.json"     # source of truth for the Keybinds page
+BINDS_LUA = RICE / "binds.lua"       # generated from it; read by hyprland.lua
+WAYBAR_CFG = HOME / ".config/waybar/config.jsonc"
+WAYBAR_CSS = HOME / ".config/waybar/style.css"
+CSS_BEGIN, CSS_END = "/* rice-settings:begin */", "/* rice-settings:end */"
 SCHEDULE_DEFAULTS = {"day": "catppuccin-latte", "night": "rose-pine",
                      "sunrise": "07:00", "sunset": "19:00"}
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -97,6 +107,8 @@ def read_look():
         v = raw[k]
         if isinstance(default, bool):
             look[k] = v.lower() == "true" if isinstance(v, str) else bool(v)
+        elif isinstance(default, str):
+            look[k] = v
         elif isinstance(default, float):
             look[k] = float(v)
         else:
@@ -111,11 +123,226 @@ def write_look(look):
         v = look[k]
         if isinstance(v, bool):
             v = "true" if v else "false"
+        elif isinstance(v, str):
+            v = lua_str(v)
         elif isinstance(v, float):
             v = f"{v:.2f}"
         body.append(f"    {k} = {v},")
     LOOK.write_text("-- Written by rice-settings; read by ~/.config/hypr/hyprland.lua\nreturn {\n"
                     + "\n".join(body) + "\n}\n")
+
+
+def lua_str(v):
+    return '"' + str(v).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ") + '"'
+
+
+def apply_bar(look):
+    """Bar position and square corners live in waybar's own files: patch the
+    config's position and a marked block at the end of style.css, then have
+    waybar reload them."""
+    if WAYBAR_CFG.exists():
+        try:
+            cfg = json.loads(WAYBAR_CFG.read_text())
+            pos = look["bar_position"] if look["bar_position"] in ("top", "bottom") else "top"
+            margin = max(cfg.get("margin-top", 0), cfg.get("margin-bottom", 0), 6)
+            cfg["position"] = pos
+            cfg.pop("margin-top", None)
+            cfg.pop("margin-bottom", None)
+            cfg["margin-top" if pos == "top" else "margin-bottom"] = margin
+            WAYBAR_CFG.write_text(json.dumps(cfg, indent=4, ensure_ascii=False) + "\n")
+        except (ValueError, OSError):
+            pass
+    if WAYBAR_CSS.exists():
+        css = WAYBAR_CSS.read_text()
+        css = re.sub(re.escape(CSS_BEGIN) + r".*?" + re.escape(CSS_END) + r"\n?", "", css, flags=re.S)
+        if look["square_corners"]:
+            # selectors outrank the theme's own (id + class beats class alone)
+            css = css.rstrip() + (f"\n\n{CSS_BEGIN}\n"
+                                  "window#waybar, window#waybar *, window#waybar .modules-left,\n"
+                                  "window#waybar .modules-center, window#waybar .modules-right,\n"
+                                  "window#waybar #workspaces button, tooltip { border-radius: 0; }\n"
+                                  f"{CSS_END}\n")
+        WAYBAR_CSS.write_text(css)
+    subprocess.run(["pkill", "-SIGUSR2", "-x", "waybar"], capture_output=True)
+
+
+def read_binds():
+    try:
+        d = json.loads(BINDS_JSON.read_text())
+    except (OSError, ValueError):
+        d = {}
+    return {"keys": d.get("keys", {}), "disabled": d.get("disabled", []), "apps": d.get("apps", [])}
+
+
+def write_binds(b):
+    RICE.mkdir(parents=True, exist_ok=True)
+    BINDS_JSON.write_text(json.dumps(b, indent=2) + "\n")
+    out = ["-- Written by rice-settings from binds.json (edit that, or use the app).",
+           "-- Read by ~/.config/hypr/hyprland.lua.", "return {", "    keys = {"]
+    out += [f"        [{lua_str(d)}] = {lua_str(k)}," for d, k in sorted(b["keys"].items())]
+    out += ["    },", "    disabled = {"]
+    out += [f"        [{lua_str(d)}] = true," for d in sorted(b["disabled"])]
+    out += ["    },", "    apps = {"]
+    out += [f"        {{ keys = {lua_str(a['keys'])}, name = {lua_str(a['name'])}, cmd = {lua_str(a['cmd'])} }},"
+            for a in b["apps"]]
+    out += ["    },", "}", ""]
+    BINDS_LUA.write_text("\n".join(out))
+
+
+def live_binds():
+    try:
+        return json.loads(run("keybinds", "--json") or "[]")
+    except ValueError:
+        return []
+
+
+MOD_NAMES = {"Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R", "Super_L",
+             "Super_R", "Meta_L", "Meta_R", "Hyper_L", "Hyper_R", "ISO_Level3_Shift", "Caps_Lock"}
+# what Shift+key produces (US layout) -> the key Hyprland binds on
+UNSHIFT = {"exclam": "1", "at": "2", "numbersign": "3", "dollar": "4", "percent": "5",
+           "asciicircum": "6", "ampersand": "7", "asterisk": "8", "parenleft": "9",
+           "parenright": "0", "underscore": "minus", "plus": "equal", "question": "slash",
+           "less": "comma", "greater": "period", "colon": "semicolon", "quotedbl": "apostrophe",
+           "braceleft": "bracketleft", "braceright": "bracketright", "bar": "backslash",
+           "asciitilde": "grave"}
+LONE_OK = re.compile(r"^(F\d+|Print|XF86\w+|Pause|Scroll_Lock|Insert)$")
+
+
+class KeyCapture(Adw.Dialog):
+    """Press-a-shortcut dialog. While open, Hyprland sits in the empty
+    `rice_capture` submap so the keys reach this window instead of firing
+    their current binds."""
+
+    def __init__(self, title, taken, on_done):
+        super().__init__(title=title, content_width=440)
+        self.taken, self.on_done, self.combo = taken, on_done, None
+        tv = Adw.ToolbarView()
+        hb = Adw.HeaderBar(show_end_title_buttons=False, show_start_title_buttons=False)
+        cancel = Gtk.Button(label="Cancel")
+        cancel.connect("clicked", lambda *_: self.close())
+        self.save = Gtk.Button(label="Set", sensitive=False)
+        self.save.add_css_class("suggested-action")
+        self.save.connect("clicked", self.on_save)
+        hb.pack_start(cancel)
+        hb.pack_end(self.save)
+        tv.add_top_bar(hb)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10,
+                      margin_top=24, margin_bottom=28, margin_start=24, margin_end=24)
+        hint = Gtk.Label(label="Press the new shortcut")
+        hint.add_css_class("dim-label")
+        self.shown = Gtk.Label(label="…")
+        self.shown.add_css_class("title-1")
+        self.msg = Gtk.Label(label="Use at least one of Super, Ctrl, Alt or Shift.", wrap=True)
+        self.msg.add_css_class("dim-label")
+        for w in (hint, self.shown, self.msg):
+            box.append(w)
+        tv.set_content(box)
+        self.set_child(tv)
+        keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        keys.connect("key-pressed", self.on_key)
+        self.add_controller(keys)
+        self.connect("closed", lambda *_: subprocess.run(
+            ["hyprctl", "dispatch", 'hl.dsp.submap("reset")'], capture_output=True))
+        subprocess.run(["hyprctl", "dispatch", 'hl.dsp.submap("rice_capture")'], capture_output=True)
+        # safety net: never leave Hyprland in the empty submap for long
+        GLib.timeout_add_seconds(30, lambda: self.close() or False)
+
+    def on_key(self, ctrl, keyval, keycode, state):
+        name = Gdk.keyval_name(keyval) or ""
+        if name in MOD_NAMES:
+            return True
+        mods = []
+        if state & (Gdk.ModifierType.SUPER_MASK | Gdk.ModifierType.META_MASK):
+            mods.append("SUPER")
+        if state & Gdk.ModifierType.CONTROL_MASK:
+            mods.append("CTRL")
+        if state & Gdk.ModifierType.ALT_MASK:
+            mods.append("ALT")
+        if state & Gdk.ModifierType.SHIFT_MASK:
+            mods.append("SHIFT")
+        if name == "Escape" and not mods:
+            self.close()
+            return True
+        # name the key as it is unshifted (SHIFT + 1, not "exclam")
+        name = Gdk.keyval_name(Gdk.keyval_to_lower(keyval)) or name
+        name = UNSHIFT.get(name, name)
+        if len(name) == 1:
+            name = name.upper()
+        combo = " + ".join(mods + [name])
+        self.shown.set_label(combo)
+        if not mods and not LONE_OK.match(name):
+            self.msg.set_label("Use at least one of Super, Ctrl, Alt or Shift.")
+            self.save.set_sensitive(False)
+        elif combo in self.taken:
+            self.msg.set_label(f"Already used by “{self.taken[combo]}”. Change or disable that one first.")
+            self.save.set_sensitive(False)
+        else:
+            self.msg.set_label("Free. Press Set to use it.")
+            self.combo = combo
+            self.save.set_sensitive(True)
+        return True
+
+    def on_save(self, *_):
+        combo = self.combo
+        self.close()
+        self.on_done(combo)
+
+
+class AppShortcut(Adw.Dialog):
+    """Pick an installed app (or type a command) and a shortcut for it."""
+
+    def __init__(self, taken, on_done):
+        super().__init__(title="Add app shortcut", content_width=520)
+        self.taken, self.on_done, self.keys = taken, on_done, None
+        self.apps = sorted((a for a in Gio.AppInfo.get_all() if a.should_show()),
+                           key=lambda a: a.get_display_name().lower())
+        tv = Adw.ToolbarView()
+        hb = Adw.HeaderBar(show_end_title_buttons=False, show_start_title_buttons=False)
+        cancel = Gtk.Button(label="Cancel")
+        cancel.connect("clicked", lambda *_: self.close())
+        self.add = Gtk.Button(label="Add", sensitive=False)
+        self.add.add_css_class("suggested-action")
+        self.add.connect("clicked", self.on_add)
+        hb.pack_start(cancel)
+        hb.pack_end(self.add)
+        tv.add_top_bar(hb)
+        page = Adw.PreferencesPage()
+        grp = Adw.PreferencesGroup()
+        self.app_row = Adw.ComboRow(title="App", enable_search=True,
+                                    model=Gtk.StringList.new([a.get_display_name() for a in self.apps]))
+        self.app_row.connect("notify::selected", lambda *_: self.validate())
+        grp.add(self.app_row)
+        self.cmd_row = Adw.EntryRow(title="…or a custom command (overrides the app)")
+        self.cmd_row.connect("changed", lambda *_: self.validate())
+        grp.add(self.cmd_row)
+        self.key_row = Adw.ActionRow(title="Shortcut", subtitle="not set")
+        btn = Gtk.Button(label="Set…", valign=Gtk.Align.CENTER)
+        btn.connect("clicked", lambda *_: KeyCapture("Shortcut for the app", self.taken, self.got_keys)
+                    .present(self))
+        self.key_row.add_suffix(btn)
+        grp.add(self.key_row)
+        page.add(grp)
+        tv.set_content(page)
+        self.set_child(tv)
+
+    def got_keys(self, combo):
+        self.keys = combo
+        self.key_row.set_subtitle(combo)
+        self.validate()
+
+    def validate(self):
+        self.add.set_sensitive(bool(self.keys) and (bool(self.cmd_row.get_text().strip()) or bool(self.apps)))
+
+    def on_add(self, *_):
+        custom = self.cmd_row.get_text().strip()
+        if custom:
+            name, cmd = custom.split()[0].split("/")[-1], custom
+        else:
+            app = self.apps[self.app_row.get_selected()]
+            name = app.get_display_name()
+            cmd = "gtk-launch " + app.get_id().removesuffix(".desktop")
+        self.close()
+        self.on_done({"keys": self.keys, "name": name, "cmd": cmd})
 
 
 def write_schedule(s):
@@ -358,14 +585,37 @@ class Settings(Adw.Application):
         grp.add(spin("gaps_in", "Inner gaps", "Space between windows", 0, 40, 1))
         grp.add(spin("gaps_out", "Outer gaps", "Space around the screen edge", 0, 80, 1))
         grp.add(spin("border_size", "Border width", "Theme-colored window border", 0, 10, 1))
-        grp.add(spin("rounding", "Corner rounding", "Window corner radius", 0, 40, 1))
+        sq = switch("square_corners", "Square corners", "No rounding on windows or the bar")
+        grp.add(sq)
+        rnd = spin("rounding", "Corner rounding", "Window corner radius", 0, 40, 1)
+        rnd.set_sensitive(not look["square_corners"])
+        sq.connect("notify::active", lambda r, _p: rnd.set_sensitive(not r.get_active()))
+        grp.add(rnd)
         page.add(grp)
 
         grp = Adw.PreferencesGroup(title="Effects")
         grp.add(switch("blur", "Blur", "Frosted glass behind translucent windows, bar and launcher"))
+        grp.add(switch("shadows", "Shadows", "Soft shadow under windows"))
         grp.add(switch("animations", "Animations", "Turn off for a snappier, lighter desktop"))
         grp.add(spin("inactive_opacity", "Unfocused window opacity", "1.00 = fully opaque", 0.5, 1.0, 0.05, 2))
         grp.add(spin("terminal_opacity", "Terminal opacity", "Alacritty and kitty", 0.4, 1.0, 0.02, 2))
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(title="Bar")
+        pos = Adw.ComboRow(title="Position", subtitle="Where the bar sits on every monitor",
+                           model=Gtk.StringList.new(["Top", "Bottom"]))
+        pos.set_selected(1 if look["bar_position"] == "bottom" else 0)
+        pos.connect("notify::selected", lambda *_: self.look_changed())
+        self.look_rows["bar_position"] = pos
+        grp.add(pos)
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(title="Desktops &amp; input")
+        grp.add(spin("workspaces_per_monitor", "Desktops per monitor",
+                     "Super + 1… switches among the focused monitor's own desktops", 1, 6, 1))
+        grp.add(switch("follow_mouse", "Focus follows mouse", "Off: click a window to focus it"))
+        grp.add(spin("sensitivity", "Mouse sensitivity", "-1.0 slowest · 0 default · 1.0 fastest",
+                     -1.0, 1.0, 0.1, 1))
         page.add(grp)
 
         grp = Adw.PreferencesGroup()
@@ -387,7 +637,9 @@ class Settings(Adw.Application):
         look = {}
         for k, default in LOOK_DEFAULTS.items():
             r = self.look_rows[k]
-            if isinstance(default, bool):
+            if k == "bar_position":
+                look[k] = "bottom" if r.get_selected() == 1 else "top"
+            elif isinstance(default, bool):
                 look[k] = r.get_active()
             elif isinstance(default, float):
                 look[k] = round(r.get_value(), 2)
@@ -397,18 +649,26 @@ class Settings(Adw.Application):
 
     def save_look(self):
         self._look_timer = 0
-        write_look(self.collect_look())
+        look = self.collect_look()
+        write_look(look)
         subprocess.run(["hyprctl", "reload"], capture_output=True)
+        apply_bar(look)
         return False
 
     def reset_look(self):
         self._busy = True
         for k, v in LOOK_DEFAULTS.items():
             r = self.look_rows[k]
-            r.set_active(v) if isinstance(v, bool) else r.set_value(v)
+            if k == "bar_position":
+                r.set_selected(0)
+            elif isinstance(v, bool):
+                r.set_active(v)
+            else:
+                r.set_value(v)
         self._busy = False
         LOOK.unlink(missing_ok=True)
         subprocess.run(["hyprctl", "reload"], capture_output=True)
+        apply_bar(dict(LOOK_DEFAULTS))
         self.toast("Look & feel reset")
 
     # ---------------------------------------------------------- schedule --
@@ -513,35 +773,124 @@ class Settings(Adw.Application):
 
     # ----------------------------------------------------------- keybinds --
     def page_keybinds(self):
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
-                      margin_top=18, margin_bottom=18, margin_start=24, margin_end=24)
-        search = Gtk.SearchEntry(placeholder_text="Search keybinds…")
-        box.append(search)
-        lst = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
-        lst.add_css_class("boxed-list")
-        self.kb_rows = []
-        for line in run("keybinds", "--print").splitlines():
-            parts = re.split(r"\s{2,}", line.strip(), maxsplit=1)
-            if len(parts) != 2:
-                continue
-            keys, desc = parts
-            r = Adw.ActionRow(title=GLib.markup_escape_text(desc))
-            lab = Gtk.Label(label=keys)
-            lab.add_css_class("dim-label")
-            lab.add_css_class("monospace")
-            r.add_suffix(lab)
-            lst.append(r)
-            self.kb_rows.append((r, f"{keys} {desc}".lower()))
+        page = Adw.PreferencesPage()
 
-        def on_search(*_):
-            q = search.get_text().lower()
-            for row, text in self.kb_rows:
-                row.set_visible(q in text)
-        search.connect("search-changed", on_search)
-        self.kb_search = search
-        sc = Gtk.ScrolledWindow(vexpand=True, child=lst)
-        box.append(sc)
-        return box
+        grp = Adw.PreferencesGroup(
+            title="App shortcuts",
+            description="Open any app with a key combination.")
+        self.apps_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.apps_list.add_css_class("boxed-list")
+        grp.add(self.apps_list)
+        add = Gtk.Button(label="Add app shortcut", margin_top=10, halign=Gtk.Align.START)
+        add.add_css_class("suggested-action")
+        add.connect("clicked", lambda *_: AppShortcut(self.taken(), self.add_app).present(self.win))
+        grp.add(add)
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(
+            title="All shortcuts",
+            description="Change keys or turn shortcuts off. Changes apply immediately; "
+                        "Reset restores the original keys.")
+        self.kb_search = Gtk.SearchEntry(placeholder_text="Search shortcuts…", margin_bottom=10)
+        self.kb_search.connect("search-changed", lambda *_: self.filter_binds())
+        grp.add(self.kb_search)
+        self.binds_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.binds_list.add_css_class("boxed-list")
+        grp.add(self.binds_list)
+        page.add(grp)
+
+        self.kb_rows = []
+        self.refresh_binds()
+        return page
+
+    def taken(self, except_desc=None):
+        """keys -> description of every live bind (for conflict checks)."""
+        return {b["keys"]: b["description"] for b in live_binds() if b["description"] != except_desc}
+
+    def refresh_binds(self):
+        user = read_binds()
+        live = live_binds()
+        # apps
+        self.apps_list.remove_all()
+        if not user["apps"]:
+            r = Adw.ActionRow(title="No app shortcuts yet")
+            r.add_css_class("dim-label")
+            self.apps_list.append(r)
+        for i, app in enumerate(user["apps"]):
+            r = Adw.ActionRow(title=GLib.markup_escape_text(app["name"]),
+                              subtitle=GLib.markup_escape_text(f'{app["keys"]}   ·   {app["cmd"]}'))
+            rm = Gtk.Button(icon_name="user-trash-symbolic", valign=Gtk.Align.CENTER, tooltip_text="Remove")
+            rm.add_css_class("flat")
+            rm.connect("clicked", lambda *_, i=i: self.remove_app(i))
+            r.add_suffix(rm)
+            self.apps_list.append(r)
+        # every other bind, plus the ones turned off (not in Hyprland any more)
+        self.binds_list.remove_all()
+        self.kb_rows = []
+        rows = [b for b in live if not b["description"].startswith("app: ")]
+        rows += [{"keys": "", "description": d} for d in user["disabled"]]
+        for b in rows:
+            desc, keys = b["description"], b["keys"]
+            off = desc in user["disabled"]
+            changed = desc in user["keys"]
+            sub = "off" if off else keys + ("   ·   changed" if changed else "")
+            r = Adw.ActionRow(title=GLib.markup_escape_text(desc), subtitle=GLib.markup_escape_text(sub))
+            if changed or off:
+                reset = Gtk.Button(label="Reset", valign=Gtk.Align.CENTER)
+                reset.add_css_class("flat")
+                reset.connect("clicked", lambda *_, d=desc: self.reset_bind(d))
+                r.add_suffix(reset)
+            if not off and "mouse" not in keys:
+                ch = Gtk.Button(label="Change", valign=Gtk.Align.CENTER)
+                ch.connect("clicked", lambda *_, d=desc: KeyCapture(
+                    f"New keys for “{d}”", self.taken(d), lambda c, d=d: self.set_bind(d, c)).present(self.win))
+                r.add_suffix(ch)
+            sw = Gtk.Switch(active=not off, valign=Gtk.Align.CENTER, tooltip_text="On / off")
+            sw.connect("notify::active", lambda w, _p, d=desc: self.toggle_bind(d, w.get_active()))
+            r.add_suffix(sw)
+            self.binds_list.append(r)
+            self.kb_rows.append((r, f"{keys} {desc}".lower()))
+        self.filter_binds()
+
+    def filter_binds(self):
+        q = self.kb_search.get_text().lower()
+        for row, text in self.kb_rows:
+            row.set_visible(q in text)
+
+    def save_binds(self, user, msg):
+        write_binds(user)
+        subprocess.run(["hyprctl", "reload"], capture_output=True)
+        GLib.idle_add(lambda: self.refresh_binds() or False)
+        self.toast(msg)
+
+    def set_bind(self, desc, combo):
+        user = read_binds()
+        user["keys"][desc] = combo
+        self.save_binds(user, f"{desc}: {combo}")
+
+    def toggle_bind(self, desc, on):
+        user = read_binds()
+        if on:
+            user["disabled"] = [d for d in user["disabled"] if d != desc]
+        elif desc not in user["disabled"]:
+            user["disabled"].append(desc)
+        self.save_binds(user, f"{desc}: {'on' if on else 'off'}")
+
+    def reset_bind(self, desc):
+        user = read_binds()
+        user["keys"].pop(desc, None)
+        user["disabled"] = [d for d in user["disabled"] if d != desc]
+        self.save_binds(user, f"{desc}: reset")
+
+    def add_app(self, app):
+        user = read_binds()
+        user["apps"].append(app)
+        self.save_binds(user, f"{app['name']}: {app['keys']}")
+
+    def remove_app(self, i):
+        user = read_binds()
+        app = user["apps"].pop(i)
+        self.save_binds(user, f"Removed {app['name']}")
 
     # -------------------------------------------------------------- about --
     def page_about(self):

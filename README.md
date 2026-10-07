@@ -69,6 +69,8 @@ Press **`Super+/`** for the full, searchable list (read live from your
 | `Super+Alt+W` | Live wallpaper on/off |
 | `Super+N` | Night light on/off (hyprsunset) |
 | `Super+Shift+R` / `Super+Alt+R` | Record a region / the screen (press again to stop) |
+| `Super+1/2/3` | Desktop 1/2/3 **of the monitor you're on** (each monitor has its own 3) |
+| `Super+Shift+1/2/3` | Move window to that desktop |
 | `Super+.` | Emoji & symbol picker |
 | `Super+,` | Settings app |
 | `Super+Return` | Terminal (alacritty, frosted-glass blur) |
@@ -126,9 +128,21 @@ Press **`Super+/`** for the full, searchable list (read live from your
   status). Status is icon-only with details in tooltips; tray, quick toggles
   (theme, live wallpaper, night light, caffeine, settings) and system stats
   (cpu, memory, brightness) sit in drawers that open on hover.
+- **Desktops per monitor.** Every monitor gets its own desktops (3 by
+  default, 1-6 in Settings), numbered left to right -- the leftmost monitor
+  has 1-3, the next 4-6, and so on -- and `Super+1/2/3` always means the
+  focused monitor's own desktops. The bar on each monitor shows only its own.
+- **Keybind editor.** Settings -> Keybinds lists every shortcut live from
+  Hyprland: change its keys (press the new combo; conflicts are caught, and
+  Hyprland is paused while you press so nothing fires), turn it off, or
+  reset it. *App shortcuts* adds a key combo for any installed app or a
+  custom command. Saved to `~/.config/hypr-rice/binds.json` (+ generated
+  `binds.lua`, read by `hyprland.lua`), so your changes survive updates.
 - **Settings app (`Super+,`, or right-click the bar logo).** One window for
   the theme and wallpaper, gaps / borders / rounding / blur / animations /
-  opacity (applied live), the day/night schedule, night-light temperature, a
+  opacity, square corners (windows and bar), shadows, bar position, desktops
+  per monitor, focus-follows-mouse and mouse sensitivity (applied live), the
+  day/night schedule, night-light temperature, a
   searchable keybind list, and versions/folders. `rice-settings <page>` opens
   a specific page (`appearance`, `look`, `schedule`, `nightlight`,
   `keybinds`, `about`). Look & feel is stored in

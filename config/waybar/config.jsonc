@@ -41,9 +41,7 @@
             "default": "󰝦",
             "empty": "󰝦"
         },
-        "persistent-workspaces": {
-            "*": 5
-        }
+        "all-outputs": false
     },
     "clock": {
         "format": "󰔟  {:%H:%M}",
