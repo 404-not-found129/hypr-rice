@@ -256,6 +256,10 @@ def lighten_all():
     os.setsid()
     LIGHT.mkdir(parents=True, exist_ok=True)
     for v, out in todo:
+        lock = LIGHT / f".{v.stem}.making"     # same lock start_light() uses
+        if lock.exists() or (out.exists() and out.stat().st_mtime >= v.stat().st_mtime):
+            continue
+        lock.touch()
         part = out.with_suffix(".part.mp4")
         r = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "ffmpeg", "-v", "error", "-y",
                             "-i", str(v), "-an", "-map", "0:v:0", "-vf", f"fps={cap}",
@@ -267,6 +271,7 @@ def lighten_all():
                 play(v, force=True)
         else:
             part.unlink(missing_ok=True)
+        lock.unlink(missing_ok=True)
     os._exit(0)
 
 

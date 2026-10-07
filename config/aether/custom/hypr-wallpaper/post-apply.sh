@@ -1,6 +1,12 @@
 #!/bin/sh
 # Runs after Aether applies a theme: point wall.png at the new wallpaper,
 # show it via awww, and reload Hyprland so borders re-read colors.toml.
+
+# Aether starts this hook without waiting for it, so quick successive applies
+# (e.g. tapping Super+Right) would run hooks on top of each other. Run them
+# one at a time; each run reads the then-current theme, so the last wins.
+exec 8>"${XDG_RUNTIME_DIR:-/tmp}/hypr-rice-post-apply.lock"
+flock 8
 wp=$(ls -t "$HOME/.config/aether/theme/backgrounds/"* 2>/dev/null | head -n1)
 [ -n "$wp" ] && ln -sf "$wp" "$HOME/Pictures/wallpapers/wall.png"
 awww img "$HOME/Pictures/wallpapers/wall.png" --transition-type grow --transition-pos center
