@@ -487,13 +487,7 @@ hl.window_rule({
     center = true,
 })
 
--- Theme picker: centered floating card grid (Super+T)
-hl.window_rule({
-    name  = "theme-picker",
-    match = { class = "^(rice\\.themepicker)$" },
-    float = true,
-    pin   = true,
-})
+-- (the theme switcher is a layer-shell overlay now: see the layer rules below)
 
 -- Picture-in-Picture: float + pin
 hl.window_rule({
@@ -518,6 +512,7 @@ hl.window_rule({
 hl.layer_rule({ match = { namespace = "waybar" }, blur = true, ignore_alpha = 0.3 })
 hl.layer_rule({ match = { namespace = "rofi" },   blur = true, ignore_alpha = 0.3 })
 hl.layer_rule({ match = { namespace = "walker" }, blur = true, ignore_alpha = 0.3 })
+hl.layer_rule({ match = { namespace = "rice-themepicker" }, blur = true })   -- Super+T overlay
 hl.layer_rule({ match = { namespace = "swaync-control-center" },      blur = true, ignore_alpha = 0.3 })
 hl.layer_rule({ match = { namespace = "swaync-notification-window" }, blur = true, ignore_alpha = 0.3 })
 

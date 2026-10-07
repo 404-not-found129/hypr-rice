@@ -61,7 +61,7 @@ Press **`Super+/`** for the full, searchable list (read live from your
 
 | Keys | Action |
 |---|---|
-| `Super+T` | Visual theme picker (sections, click / arrows / 1-9, `R` = random) |
+| `Super+T` | Theme switcher -- Omarchy-style carousel (←/→, Enter, type to filter) |
 | `Super+Shift+T` | Random theme |
 | `Super+Ctrl+T` | Theme from the current wallpaper (auto palette) |
 | `Super+←/→` | Previous / next wallpaper *within the current theme* |
@@ -251,17 +251,19 @@ hl.on("hyprland.start", function() hl.exec_cmd("udiskie --automount --no-tray") 
   switching never waits on generation. Note: apps already running when
   you switch keep their old cursors until restarted (Wayland apps load
   cursor themes at startup).
-- **`bin/theme-picker`** (Super+T) is a floating GTK4 grid of theme cards,
-  split into *games* and *aesthetic* sections -- wallpaper preview, palette
-  swatches, a sun mark on light themes, active theme highlighted -- styled by
-  the current theme's own colors. Click a card, use arrow keys + Enter, or
-  press 1-9; `R` picks a random theme; Esc closes; Super+T again toggles. It runs as a resident
-  service (autostarted by Hyprland) with cached wallpaper thumbnails, so
-  the window appears in ~0.3s instead of paying GTK startup + 4K image
-  decode on every open. (`bin/themeswitch` remains as a plain walker-dmenu
-  fallback.) Both apply through **`bin/themectl`**, the single entry point
-  that takes the apply lock, records the active theme and runs Aether. The active theme's wallpapers are mirrored into `~/Wallpapers`
-  so the Aether GUI's local browser only shows on-theme ones.
+- **`bin/theme-picker`** (Super+T) is modelled on Omarchy's switcher: a
+  full-screen layer-shell overlay over the blurred, dimmed desktop with a
+  horizontal carousel -- the selected theme as a large slanted preview with
+  an accent border, the others as narrow slanted slices fanning out on both
+  sides (it wraps around), and the name underneath. ←/→, Tab or the mouse
+  wheel move with a short eased slide; Enter or clicking the big preview
+  applies; typing filters; Esc clears the filter then closes; clicking
+  outside closes. The last two cards are *match wallpaper* and *surprise
+  me*. It runs as a resident service (autostarted by Hyprland) with every
+  preview pre-decoded, so it opens instantly. (`bin/themeswitch` remains as
+  a plain walker-dmenu fallback.) Both apply through **`bin/themectl`**,
+  the single entry point that takes the apply lock, records the active
+  theme and runs Aether.
 - **`bin/wallcycle`** (Super+←/→) cycles the active theme's collection through
   `aether --generate`, so colors re-extract per wallpaper. A shared lock keeps
   the two scripts from ever running two applies at once.

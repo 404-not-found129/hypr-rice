@@ -38,7 +38,7 @@ PACMAN_DEPS=(
   fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
   rofi git base-devel
   playerctl brightnessctl hyprsunset wf-recorder slurp jq libnotify
-  bluez bluez-utils blueman libadwaita ffmpeg
+  bluez bluez-utils blueman libadwaita ffmpeg gtk4-layer-shell python-cairo
 )
 AUR_DEPS=(
   aether walker-bin wlogout mpvpaper
