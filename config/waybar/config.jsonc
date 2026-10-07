@@ -29,7 +29,7 @@
     "custom/logo": {
         "format": "󰞇",
         "tooltip": true,
-        "on-click": "rofi -show drun",
+        "on-click": "walker",
         "tooltip-format": "click: apps · right-click: settings",
         "on-click-right": "~/.local/bin/rice-settings"
     },
@@ -64,7 +64,7 @@
     "cpu": {
         "format": "󰓥  {usage}%",
         "interval": 3,
-        "on-click": "kitty btop"
+        "on-click": "alacritty -e btop"
     },
     "memory": {
         "format": "󰧑  {percentage}%",
@@ -259,7 +259,7 @@
     "custom/system-toggle": {
         "format": "󰊚",
         "tooltip-format": "System (hover)",
-        "on-click": "kitty btop"
+        "on-click": "alacritty -e btop"
     },
     "custom/livewall": {
         "exec": "~/.local/bin/livewall status",

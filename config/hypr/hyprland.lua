@@ -513,3 +513,19 @@ hl.layer_rule({ match = { namespace = "rofi" },   blur = true, ignore_alpha = 0.
 hl.layer_rule({ match = { namespace = "walker" }, blur = true, ignore_alpha = 0.3 })
 hl.layer_rule({ match = { namespace = "swaync-control-center" },      blur = true, ignore_alpha = 0.3 })
 hl.layer_rule({ match = { namespace = "swaync-notification-window" }, blur = true, ignore_alpha = 0.3 })
+
+
+-----------------------------
+---- THIS MACHINE (local) ----
+-----------------------------
+
+-- Machine-specific settings -- monitor layout, extra autostarts -- go in
+-- ~/.config/hypr/local.lua, which install.sh keeps across reinstalls/updates.
+do
+    local f = os.getenv("HOME") .. "/.config/hypr/local.lua"
+    local fh = io.open(f, "r")
+    if fh then
+        fh:close()
+        dofile(f)
+    end
+end

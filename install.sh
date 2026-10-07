@@ -12,6 +12,11 @@ die()   { printf '%s[x]%s %s\n' "$RED" "$RST" "$*" >&2; exit 1; }
 trap 'die "Install failed at line $LINENO. Fix the issue and re-run — the script is idempotent."' ERR
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Re-running (e.g. `git pull && ./install.sh`) must not undo your choices:
+# first-time-only steps (default theme, wallpaper, color pre-render) are
+# skipped when the rice is already set up.
+FIRST_INSTALL=1
+[[ -f $HOME/.config/aether/current-theme ]] && FIRST_INSTALL=0
 BACKUP="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
 
 # ---------------------------------------------------------------- checks ----
@@ -84,16 +89,41 @@ backup() { # backup <path>
 }
 
 info "Installing configs (existing ones are backed up to $BACKUP)..."
+# Machine-specific Hyprland files survive reinstalls: keep them aside, put back after.
+keep=$(mktemp -d)
+for f in local.lua monitors-local.lua; do
+  [[ -f $HOME/.config/hypr/$f ]] && cp "$HOME/.config/hypr/$f" "$keep/"
+done
 for d in hypr waybar alacritty kitty swaync walker fastfetch wlogout; do
   backup "$HOME/.config/$d"
   mkdir -p "$HOME/.config/$d"
   cp -r "$REPO/config/$d/." "$HOME/.config/$d/"
 done
+cp -n "$keep/"* "$HOME/.config/hypr/" 2>/dev/null || true
+rm -rf "$keep"
 
 mkdir -p "$HOME/.config/aether"
 cp -r "$REPO/config/aether/custom" "$HOME/.config/aether/"
 mkdir -p "$HOME/.config/aether/blueprints"
-cp "$REPO/config/aether/blueprints/"*.json "$HOME/.config/aether/blueprints/"
+# Update the themes' palettes from the repo but keep each theme's wallpaper
+# choice (livewall-fetch points them at live-wallpaper posters) when that
+# file still exists.
+python3 - "$REPO/config/aether/blueprints" "$HOME/.config/aether/blueprints" <<'PY'
+import json, sys
+from pathlib import Path
+src, dst = Path(sys.argv[1]), Path(sys.argv[2])
+for f in src.glob("*.json"):
+    new = json.loads(f.read_text())
+    old_f = dst / f.name
+    if old_f.exists():
+        try:
+            old_wall = json.loads(old_f.read_text()).get("palette", {}).get("wallpaper", "")
+        except ValueError:
+            old_wall = ""
+        if old_wall and "__HOME__" not in old_wall and Path(old_wall).exists():
+            new["palette"]["wallpaper"] = old_wall
+    old_f.write_text(json.dumps(new, indent=2) + "\n")
+PY
 
 # Theme groups + day/night schedule settings. -n: never clobber your edits.
 mkdir -p "$HOME/.config/hypr-rice"
@@ -129,16 +159,25 @@ info "Granting write access to Papirus themes (needed for folder tinting)..."
 sudo setfacl -R -m "u:$USER:rwX" /usr/share/icons/Papirus /usr/share/icons/Papirus-Dark /usr/share/icons/Papirus-Light
 
 # ----------------------------------------------------------- wallpapers -----
+# Themes whose stills you archived (livewall-fetch --archive-stills) don't
+# get them back.
+archived() { [[ -d $HOME/Pictures/wallpapers/stills-archive/$1 ]]; }
 if [[ -d $REPO/wallpapers/collections ]]; then
   info "Installing bundled wallpaper collections..."
   mkdir -p "$HOME/Pictures/wallpapers/collections"
-  cp -rn "$REPO/wallpapers/collections/." "$HOME/Pictures/wallpapers/collections/"
+  for d in "$REPO/wallpapers/collections/"*/; do
+    t=$(basename "$d")
+    archived "$t" && continue
+    mkdir -p "$HOME/Pictures/wallpapers/collections/$t"
+    cp -rn "$d." "$HOME/Pictures/wallpapers/collections/$t/"
+  done
 fi
 
 info "Fetching any missing wallpapers from wallhaven..."
 fails=0
 while read -r theme url; do
   [[ -z $theme || $theme == \#* ]] && continue
+  archived "$theme" && continue
   dir="$HOME/Pictures/wallpapers/collections/$theme"
   mkdir -p "$dir"
   f="$dir/$(basename "$url")"
@@ -157,6 +196,7 @@ cp -n "$REPO/wallpapers/catppuccin-evening-sky.png" "$HOME/Pictures/wallpapers/c
 ln -sfn elden-ring "$HOME/Pictures/wallpapers/collections/ashen-flame"
 
 # ------------------------------------------------------------- defaults -----
+if (( FIRST_INSTALL )); then
 info "Setting the default theme (elden-ring)..."
 printf 'elden-ring' > "$HOME/.config/aether/current-theme"
 default_wall="$HOME/Pictures/wallpapers/collections/elden-ring/wallhaven-m9mwqy.jpg"
@@ -179,6 +219,9 @@ if [[ -s $default_wall ]]; then
   "$HOME/.local/bin/aether-run" --generate "$default_wall" --no-apply >/dev/null 2>&1 \
     || warn "Could not pre-render theme files — press Super+T after login to apply a theme."
 fi
+else
+  info "Keeping your current theme ($(cat "$HOME/.config/aether/current-theme")) and wallpapers."
+fi
 
 "$HOME/.local/bin/waybar-theme-icons" >/dev/null 2>&1 || true
 
@@ -194,7 +237,12 @@ done
 # Live wallpapers: non-AI animated art for every theme (hand-made pixel/anime
 # loops and in-game captures from moewalls.com; real forest footage for everforest).
 # Big download, so ask; `livewall-fetch` can be run any time later too.
-read -rp "Download live wallpapers for every theme (~2.5 GB)? [y/N] " lw
+if compgen -G "$HOME/Pictures/wallpapers/collections/*/*.mp4" >/dev/null; then
+  info "Live wallpapers already installed (run livewall-fetch to add new ones)."
+  lw=n
+else
+  read -rp "Download live wallpapers for every theme (~2.5 GB)? [y/N] " lw
+fi
 if [[ ${lw,,} == y* ]]; then
   info "Downloading live wallpapers..."
   python3 "$HOME/.local/bin/livewall-fetch" --manifest "$HOME/.config/hypr-rice/live-manifest.txt" \

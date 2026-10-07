@@ -198,8 +198,19 @@ downloads).
 
 Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
 
-**Updating:** `git pull && ./install.sh` -- your `~/.config/hypr-rice/`
-settings (theme groups, schedule) are never overwritten.
+**Updating:** `git pull && ./install.sh`. Re-running keeps your current
+theme and wallpaper choices, archived stills stay archived, live wallpapers
+aren't re-downloaded, and your `~/.config/hypr-rice/` settings (look,
+keybinds, schedule) are never overwritten.
+
+**Machine-specific settings** (monitor layout, extra autostarts) go in
+`~/.config/hypr/local.lua`, which `hyprland.lua` loads last and the
+installer preserves, e.g.:
+
+```lua
+hl.monitor({ output = "DP-1", mode = "2560x1440@165", position = "0x0", scale = 1 })
+hl.on("hyprland.start", function() hl.exec_cmd("udiskie --automount --no-tray") end)
+```
 
 ## How it works
 
