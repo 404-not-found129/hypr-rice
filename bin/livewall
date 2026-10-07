@@ -20,6 +20,8 @@ in this order of preference:
 
   livewall on | off | toggle   live mode (also in rice-settings)
   livewall effects on | off    particle fallback for not-yet-animated wallpapers
+  livewall fps 30 | 24 | off   cap video wallpapers' frame rate (default 30)
+  livewall lighten             make the capped copies for every video now
   livewall sync                start/stop to match the current wallpaper
                                (called from Aether's post-apply hook)
   livewall pause | resume     pause toggles
@@ -34,10 +36,12 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HOME = Path.home()
 CACHE = HOME / ".cache/hypr-rice/live"
+LIGHT = HOME / ".cache/hypr-rice/live-30fps"   # fps-capped copies of video wallpapers
 AI = HOME / ".local/share/hypr-rice/live-ai"
 # Poster frames live next to the wallpapers (not in a cache): theme blueprints
 # point at them as the theme's wallpaper.
@@ -81,14 +85,14 @@ def notify(title, body=""):
 
 
 def conf():
-    vals = {"enabled": "0", "effects": "1"}
+    vals = {"enabled": "0", "effects": "1", "fps_cap": "30"}
     if CONF.exists():
         vals.update(re.findall(r"^(\w+)=(\S*)$", CONF.read_text(), re.M))
     return vals
 
 
 def write_conf(**kw):
-    vals = {**conf(), **{k: "1" if v else "0" for k, v in kw.items()}}
+    vals = {**conf(), **{k: ("1" if v else "0") if isinstance(v, bool) else str(v) for k, v in kw.items()}}
     CONF.parent.mkdir(parents=True, exist_ok=True)
     CONF.write_text("# live wallpaper settings -- `livewall on|off`, `livewall effects on|off`\n"
                     + "".join(f"{k}={v}\n" for k, v in vals.items()))
@@ -144,25 +148,126 @@ def playing_path():
 
 def stop():
     subprocess.run(["pkill", "-x", "mpvpaper"], capture_output=True)
+    # wait until it is really gone, or the next play() can mistake the
+    # exiting player for a running one and skip starting the new wallpaper
+    for _ in range(40):
+        if not player_running():
+            break
+        time.sleep(0.05)
     (CACHE / ".playing").unlink(missing_ok=True)
 
 
-def play(video):
+def fps_cap():
+    try:
+        return int(conf()["fps_cap"])
+    except ValueError:
+        return 30
+
+
+def video_fps(video):
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                        "stream=r_frame_rate", "-of", "csv=p=0", str(video)],
+                       capture_output=True, text=True).stdout.split()
+    try:
+        num, den = (int(x) for x in r[0].split("/"))
+        return num / den
+    except (IndexError, ValueError, ZeroDivisionError):
+        return 0
+
+
+def light_copy(video):
+    """The video to actually play. Above the fps cap (default 30) a capped
+    copy at full resolution is played instead -- about half the decode and
+    GPU work for three monitors, and no loss of sharpness on the portrait
+    screens. Made once in the background (lowest priority); until it's
+    ready the original plays."""
+    cap = fps_cap()
+    video = Path(video).resolve()
+    if cap <= 0 or video_fps(video) <= cap + 1:
+        return video
+    out = LIGHT / f"{video.stem}.mp4"
+    if out.exists() and out.stat().st_mtime >= video.stat().st_mtime:
+        return out
+    start_light(video, out, cap)
+    return video
+
+
+def start_light(video, out, cap):
+    LIGHT.mkdir(parents=True, exist_ok=True)
+    lock = LIGHT / f".{video.stem}.making"
+    if lock.exists():
+        return
+    lock.touch()
+    if os.fork():
+        return
+    os.setsid()
+    try:
+        part = out.with_suffix(".part.mp4")
+        r = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "ffmpeg", "-v", "error", "-y",
+                            "-i", str(video), "-an", "-map", "0:v:0", "-vf", f"fps={cap}",
+                            "-c:v", "libx264", "-preset", "medium", "-crf", "22", "-pix_fmt", "yuv420p",
+                            "-movflags", "+faststart", str(part)], capture_output=True)
+        if r.returncode == 0:
+            part.replace(out)
+            # swap to the light copy if this video is still the wallpaper
+            if playing_path() == str(video) and enabled():
+                play(video, force=True)
+        else:
+            part.unlink(missing_ok=True)
+    finally:
+        lock.unlink(missing_ok=True)
+        os._exit(0)
+
+
+def play(video, force=False):
     if not shutil.which("mpvpaper"):
         notify("Live wallpaper", "mpvpaper is not installed (yay -S mpvpaper)")
         return
-    if player_running() and playing_path() == str(video):
+    video = Path(video).resolve()
+    if not force and player_running() and playing_path() == str(video):
         return
+    actual = light_copy(video)
     stop()
     # load-scripts=no: no mpv-mpris, so the wallpaper never shows up as a
     # "now playing" player (bar, fastfetch) or grabs the media keys
     opts = ("no-audio loop hwdec=auto panscan=1.0 load-scripts=no "
             f"input-ipc-server={SOCK} really-quiet")
     # -p: pause while the wallpaper is fully covered (fullscreen apps)
-    subprocess.Popen(["setsid", "mpvpaper", "-p", "-o", opts, "*", str(video)],
+    subprocess.Popen(["setsid", "mpvpaper", "-p", "-o", opts, "*", str(actual)],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     CACHE.mkdir(parents=True, exist_ok=True)
-    (CACHE / ".playing").write_text(str(video))
+    (CACHE / ".playing").write_text(str(video))   # the original, for "already playing" checks
+
+
+def lighten_all():
+    """Make the fps-capped copies for every video wallpaper, one after
+    another, at the lowest priority (background)."""
+    cap = fps_cap()
+    vids = [v.resolve() for v in sorted(HOME.glob("Pictures/wallpapers/collections/*/*"))
+            if v.suffix.lower() in VIDEO_EXT and not v.parent.is_symlink()]
+    todo = []
+    for v in dict.fromkeys(vids):
+        out = LIGHT / f"{v.stem}.mp4"
+        if cap > 0 and video_fps(v) > cap + 1 and not (out.exists() and out.stat().st_mtime >= v.stat().st_mtime):
+            todo.append((v, out))
+    print(f"{len(todo)} video(s) to cap at {cap} fps")
+    if not todo or os.fork():
+        return
+    os.setsid()
+    LIGHT.mkdir(parents=True, exist_ok=True)
+    for v, out in todo:
+        part = out.with_suffix(".part.mp4")
+        r = subprocess.run(["nice", "-n", "19", "ionice", "-c3", "ffmpeg", "-v", "error", "-y",
+                            "-i", str(v), "-an", "-map", "0:v:0", "-vf", f"fps={cap}",
+                            "-c:v", "libx264", "-preset", "medium", "-crf", "22", "-pix_fmt", "yuv420p",
+                            "-movflags", "+faststart", str(part)], capture_output=True)
+        if r.returncode == 0:
+            part.replace(out)
+            if playing_path() == str(v) and enabled():
+                play(v, force=True)
+        else:
+            part.unlink(missing_ok=True)
+    os._exit(0)
 
 
 def ipc(command):
@@ -341,6 +446,13 @@ def main(argv):
         set_enabled(not enabled()); sync(); bar()
     elif cmd == "effects" and len(argv) > 2 and argv[2] in ("on", "off"):
         write_conf(effects=argv[2] == "on"); sync(); bar()
+    elif cmd == "fps" and len(argv) > 2 and argv[2] in ("30", "24", "off"):
+        write_conf(fps_cap=0 if argv[2] == "off" else int(argv[2]))
+        p = playing_path()
+        if p and enabled():
+            play(p, force=True)
+    elif cmd == "lighten":
+        lighten_all()
     elif cmd == "sync":
         sync(); bar()
     elif cmd == "pause":

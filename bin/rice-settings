@@ -498,6 +498,15 @@ class Settings(Adw.Application):
                             run("livewall", "effects", "on" if r.get_active() else "off", background=True))
         grp.add(self.fx_row)
 
+        smooth = "fps_cap=0" in live_conf
+        self.smooth_row = Adw.SwitchRow(
+            title="Smooth 60 fps",
+            subtitle="Off: videos play at 30 fps -- about half the CPU/GPU work, same sharpness",
+            active=smooth)
+        self.smooth_row.connect("notify::active", lambda r, _p: self._busy or
+                                run("livewall", "fps", "off" if r.get_active() else "30", background=True))
+        grp.add(self.smooth_row)
+
         ai_dir = HOME / ".local/share/hypr-rice/live-ai"
         n_ai = len(list(ai_dir.glob("*.mp4"))) if ai_dir.is_dir() else 0
         row = Adw.ActionRow(
