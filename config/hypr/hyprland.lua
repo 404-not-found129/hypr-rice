@@ -300,7 +300,7 @@ bind(mainMod .. " + F", "fullscreen",        hl.dsp.window.fullscreen({ mode = "
 bind(mainMod .. " + M", "maximize",          hl.dsp.window.fullscreen({ mode = "maximized",  action = "toggle" }))
 
 -- Session
-bind(mainMod .. " + L",      "lock screen",  hl.dsp.exec_cmd("hyprlock"))
+bind(mainMod .. " + L",      "lock screen",  hl.dsp.exec_cmd("loginctl lock-session"))  -- via hypridle's lock_cmd
 bind(mainMod .. " + Escape", "power menu",   hl.dsp.exec_cmd("wlogout"))
 
 -- Utilities

@@ -24,7 +24,8 @@ in this order of preference:
   livewall lighten             make the capped copies for every video now
   livewall sync                start/stop to match the current wallpaper
                                (called from Aether's post-apply hook)
-  livewall pause | resume     pause toggles
+  livewall pause | hold | resume   pause toggles; hold always pauses
+                               (used while locked / screens off)
   livewall status              JSON for waybar
   livewall make <image> [effect]   pre-render one wallpaper
   livewall prerender [theme]       pre-render every still of a theme (background)
@@ -462,6 +463,8 @@ def main(argv):
         sync(); bar()
     elif cmd == "pause":
         ipc(["cycle", "pause"])
+    elif cmd == "hold":                       # pause (not toggle): lock / screen off
+        ipc(["set_property", "pause", True])
     elif cmd == "resume":
         ipc(["set_property", "pause", False])
     elif cmd == "status":
