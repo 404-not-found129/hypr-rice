@@ -64,8 +64,10 @@ apply() {
     mkdir -p "$HOME/Wallpapers"
     find "$HOME/Wallpapers" -maxdepth 1 -type l -delete 2>/dev/null
     ln -sf "$COLLECTIONS/$name"/* "$HOME/Wallpapers/" 2>/dev/null
-    command -v notify-send >/dev/null &&
+    # only say which theme it is when you didn't pick it yourself
+    if [ "${ANNOUNCE:-0}" = 1 ] && command -v notify-send >/dev/null; then
         notify-send -a hypr-rice -t 2500 "Theme" "$name" 2>/dev/null
+    fi
     return 0
 }
 
@@ -98,7 +100,7 @@ case "${1:-}" in
         cur=$(current)
         mapfile -t pool < <(themes_in "${2:-}" | grep -vxF -- "$cur")
         (( ${#pool[@]} )) || { echo "themectl: nothing to pick from" >&2; exit 1; }
-        apply "${pool[RANDOM % ${#pool[@]}]}"
+        ANNOUNCE=1 apply "${pool[RANDOM % ${#pool[@]}]}"
         ;;
     next) step 1 ;;
     prev) step -1 ;;

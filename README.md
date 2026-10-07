@@ -125,6 +125,14 @@ Press **`Super+/`** for the full, searchable list (read live from your
      (or the settings switch) shows the plain still instead.
   3. **Your own videos** work like the fetched ones: drop
      `.mp4 .webm .mkv .mov .gif` into a theme's collection.
+- **Omarchy-style theme switching.** Switching themes or wallpapers is one
+  coordinated transition: the playing video is swapped for a still of its
+  current frame, the new wallpaper is revealed with a soft slanted wipe
+  (ease-in-out, like Omarchy's background reveal) while the bar crossfades
+  and the window borders recolor at the same moment, and the new video
+  takes over from the exact frame the reveal ended on. The bar never
+  blinks out: `bar-swap` starts the new bar under the old one before closing
+  it. Icon, cursor and folder recolors happen afterwards, off screen.
 - **Clean bar.** Three floating islands (workspaces / clock + media /
   status). Status is icon-only with details in tooltips; tray, quick toggles
   (theme, live wallpaper, night light, caffeine, settings) and system stats

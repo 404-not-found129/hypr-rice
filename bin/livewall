@@ -22,6 +22,8 @@ in this order of preference:
   livewall effects on | off    particle fallback for not-yet-animated wallpapers
   livewall fps 30 | 24 | off   cap video wallpapers' frame rate (default 30)
   livewall lighten             make the capped copies for every video now
+  livewall freeze              swap the playing video for a still of its current
+                               frame (first step of a theme transition)
   livewall sync                start/stop to match the current wallpaper
                                (called from Aether's post-apply hook)
   livewall pause | hold | resume   pause toggles; hold always pauses
@@ -53,6 +55,8 @@ BACKGROUNDS = HOME / ".config/aether/theme/backgrounds"
 COLORS = HOME / ".config/aether/theme/colors.toml"
 SOCK = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "hypr-rice-livewall.sock"
 VIDEO_EXT = {".mp4", ".webm", ".mkv", ".mov", ".gif"}
+POSTER_AT = 1          # seconds into a video wallpaper its poster frame is taken from
+FREEZE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "hypr-rice-freeze.jpg"
 
 W, H, FPS, SECONDS = 2560, 1440, 24, 12
 N = FPS * SECONDS  # frames per loop; particle speeds are k/N so they wrap exactly
@@ -220,7 +224,7 @@ def start_light(video, out, cap):
         os._exit(0)
 
 
-def play(video, force=False):
+def play(video, force=False, start=0):
     if not shutil.which("mpvpaper"):
         notify("Live wallpaper", "mpvpaper is not installed (yay -S mpvpaper)")
         return
@@ -233,6 +237,10 @@ def play(video, force=False):
     # "now playing" player (bar, fastfetch) or grabs the media keys
     opts = ("no-audio loop hwdec=auto panscan=1.0 load-scripts=no "
             f"input-ipc-server={SOCK} really-quiet")
+    if start:
+        # begin on the poster frame the theme transition just revealed, so
+        # the video takes over from the still without a visible jump
+        opts += f" start={start}"
     # -p: pause while the wallpaper is fully covered (fullscreen apps)
     subprocess.Popen(["setsid", "mpvpaper", "-p", "-o", opts, "*", str(actual)],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -274,6 +282,52 @@ def lighten_all():
             part.unlink(missing_ok=True)
         lock.unlink(missing_ok=True)
     os._exit(0)
+
+
+def request(command, timeout=1.0):
+    """Send one mpv IPC command and wait for its reply (None if no player)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_UNIX)
+        s.settimeout(timeout)
+        s.connect(str(SOCK))
+        s.sendall((json.dumps({"command": command}) + "\n").encode())
+        buf = b""
+        while b"\n" not in buf:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            buf += chunk
+        s.close()
+        for line in buf.decode(errors="replace").splitlines():
+            msg = json.loads(line)
+            if "error" in msg:          # skip async event lines
+                return msg
+    except (OSError, ValueError):
+        return None
+
+
+def freeze():
+    """Hand the wallpaper from the moving video to a still of its current
+    frame, invisibly: grab the frame, show it with awww instantly, then stop
+    the player. A theme transition can then reveal the new wallpaper over
+    it instead of over a stale still (or while the old video keeps moving)."""
+    if not player_running():
+        return False
+    FREEZE.unlink(missing_ok=True)
+    request(["set_property", "screenshot-format", "jpg"])
+    request(["set_property", "screenshot-jpeg-quality", 92])
+    r = request(["screenshot-to-file", str(FREEZE), "video"], timeout=2.0)
+    if not (r and r.get("error") == "success" and FREEZE.exists()):
+        stop()
+        return False
+    subprocess.run(["awww", "img", str(FREEZE), "--transition-type", "none"], capture_output=True)
+    time.sleep(0.03)                        # let awww commit the frame
+    # stop the player without waiting for it to exit: the identical still is
+    # already underneath, so the reveal can start right away
+    subprocess.run(["pkill", "-x", "mpvpaper"], capture_output=True)
+    (CACHE / ".playing").unlink(missing_ok=True)
+    return True
 
 
 def ipc(command):
@@ -356,7 +410,7 @@ def poster(video):
     out = POSTERS / f"{video.stem}.jpg"
     if not out.exists() or out.stat().st_mtime < video.stat().st_mtime:
         # a frame 1 s in (past any fade-in), full resolution
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "1", "-i", str(video),
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(POSTER_AT), "-i", str(video),
                         "-frames:v", "1", "-q:v", "2", str(out)], check=True)
     CACHE.mkdir(parents=True, exist_ok=True)
     link = CACHE / f"{out.stem}.mp4"
@@ -375,7 +429,7 @@ def sync():
     if not enabled():
         return stop()          # live mode off: the still/poster stays up
     if live.exists() and is_user_video(live):
-        return play(live)
+        return play(live, start=POSTER_AT)
     if ai_for(still).exists():
         return play(ai_for(still))
     if not effects_fallback():
@@ -442,7 +496,21 @@ def bar():
     subprocess.run(["pkill", "-RTMIN+11", "waybar"], capture_output=True)
 
 
+def drop_inherited_locks():
+    """livewall forks long-running children (30 fps conversions, effect
+    renders). Called from post-apply, it inherits the theme-apply lock
+    descriptors; a child keeping them would block every later theme switch
+    until it finished. Close any inherited *.lock descriptor first."""
+    for fd in os.listdir("/proc/self/fd"):
+        try:
+            if os.readlink(f"/proc/self/fd/{fd}").endswith(".lock"):
+                os.close(int(fd))
+        except OSError:
+            pass
+
+
 def main(argv):
+    drop_inherited_locks()
     cmd = argv[1] if len(argv) > 1 else "status"
     if cmd == "on":
         set_enabled(True); sync(); bar()
@@ -463,6 +531,8 @@ def main(argv):
         sync(); bar()
     elif cmd == "pause":
         ipc(["cycle", "pause"])
+    elif cmd == "freeze":
+        freeze()
     elif cmd == "hold":                       # pause (not toggle): lock / screen off
         ipc(["set_property", "pause", True])
     elif cmd == "resume":

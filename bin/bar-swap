@@ -1,0 +1,30 @@
+#!/bin/bash
+# Restart waybar (new theme colors and icons) without the bar ever
+# disappearing: start the new bar first and close the old one only once the
+# new one is on screen. Hyprland's layer fade turns the swap into a
+# crossfade. A plain `pkill -SIGUSR2 waybar` tears the bars down and
+# rebuilds them, which blinks the bar out for ~0.3 s on every theme change.
+
+# Don't hand inherited descriptors -- notably the theme-apply locks themectl
+# and post-apply hold on fd 8/9 -- to the long-lived bar, or every later
+# theme switch waits on a lock that never frees.
+for fd in /proc/$$/fd/*; do
+    n=${fd##*/}
+    (( n > 2 )) && eval "exec $n>&-" 2>/dev/null
+done
+
+old=$(pgrep -x waybar)
+setsid waybar >/dev/null 2>&1 &
+
+if [[ -n $old ]]; then
+    n_mon=$(hyprctl monitors -j | jq length)
+    count() { hyprctl layers -j | jq '[.. | objects | select(.namespace? == "waybar")] | length'; }
+    for _ in $(seq 60); do                 # up to 3 s
+        (( $(count) >= 2 * n_mon )) && break
+        sleep 0.05
+    done
+    # the new bars fade in (Hyprland's layersIn animation, ~0.4 s); keep the
+    # old ones underneath until that's done or the bar blinks out mid-fade
+    sleep 0.45
+    kill $old 2>/dev/null
+fi
