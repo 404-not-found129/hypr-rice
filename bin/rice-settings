@@ -171,7 +171,8 @@ def read_binds():
         d = json.loads(BINDS_JSON.read_text())
     except (OSError, ValueError):
         d = {}
-    return {"keys": d.get("keys", {}), "disabled": d.get("disabled", []), "apps": d.get("apps", [])}
+    return {"keys": d.get("keys", {}), "disabled": d.get("disabled", []), "apps": d.get("apps", []),
+            "autostart": d.get("autostart", [])}
 
 
 def write_binds(b):
@@ -185,6 +186,8 @@ def write_binds(b):
     out += ["    },", "    apps = {"]
     out += [f"        {{ keys = {lua_str(a['keys'])}, name = {lua_str(a['name'])}, cmd = {lua_str(a['cmd'])} }},"
             for a in b["apps"]]
+    out += ["    },", "    autostart = {"]
+    out += [f"        {{ name = {lua_str(a['name'])}, cmd = {lua_str(a['cmd'])} }}," for a in b.get("autostart", [])]
     out += ["    },", "}", ""]
     BINDS_LUA.write_text("\n".join(out))
 
@@ -291,9 +294,9 @@ class KeyCapture(Adw.Dialog):
 class AppShortcut(Adw.Dialog):
     """Pick an installed app (or type a command) and a shortcut for it."""
 
-    def __init__(self, taken, on_done):
-        super().__init__(title="Add app shortcut", content_width=520)
-        self.taken, self.on_done, self.keys = taken, on_done, None
+    def __init__(self, taken, on_done, need_keys=True):
+        super().__init__(title="Add app shortcut" if need_keys else "Add startup app", content_width=520)
+        self.taken, self.on_done, self.keys, self.need_keys = taken, on_done, None, need_keys
         self.apps = sorted((a for a in Gio.AppInfo.get_all() if a.should_show()),
                            key=lambda a: a.get_display_name().lower())
         tv = Adw.ToolbarView()
@@ -320,7 +323,8 @@ class AppShortcut(Adw.Dialog):
         btn.connect("clicked", lambda *_: KeyCapture("Shortcut for the app", self.taken, self.got_keys)
                     .present(self))
         self.key_row.add_suffix(btn)
-        grp.add(self.key_row)
+        if need_keys:
+            grp.add(self.key_row)
         page.add(grp)
         tv.set_content(page)
         self.set_child(tv)
@@ -331,7 +335,8 @@ class AppShortcut(Adw.Dialog):
         self.validate()
 
     def validate(self):
-        self.add.set_sensitive(bool(self.keys) and (bool(self.cmd_row.get_text().strip()) or bool(self.apps)))
+        self.add.set_sensitive((bool(self.keys) or not self.need_keys)
+                               and (bool(self.cmd_row.get_text().strip()) or bool(self.apps)))
 
     def on_add(self, *_):
         custom = self.cmd_row.get_text().strip()
@@ -342,7 +347,10 @@ class AppShortcut(Adw.Dialog):
             name = app.get_display_name()
             cmd = "gtk-launch " + app.get_id().removesuffix(".desktop")
         self.close()
-        self.on_done({"keys": self.keys, "name": name, "cmd": cmd})
+        entry = {"name": name, "cmd": cmd}
+        if self.need_keys:
+            entry["keys"] = self.keys
+        self.on_done(entry)
 
 
 def write_schedule(s):
@@ -389,7 +397,7 @@ class Settings(Adw.Application):
             ("look", "Look & Feel", "preferences-desktop-display-symbolic", self.page_look()),
             ("schedule", "Schedule", "alarm-symbolic", self.page_schedule()),
             ("nightlight", "Night Light", "weather-clear-night-symbolic", self.page_nightlight()),
-            ("keybinds", "Keybinds", "input-keyboard-symbolic", self.page_keybinds()),
+            ("keybinds", "Apps & Keys", "input-keyboard-symbolic", self.page_keybinds()),
             ("about", "About", "help-about-symbolic", self.page_about()),
         ):
             stack.add_titled_with_icon(page, name, title, icon)
@@ -797,6 +805,17 @@ class Settings(Adw.Application):
         page.add(grp)
 
         grp = Adw.PreferencesGroup(
+            title="Start at login",
+            description="Apps that open automatically when you log in.")
+        self.start_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.start_list.add_css_class("boxed-list")
+        grp.add(self.start_list)
+        add2 = Gtk.Button(label="Add startup app", margin_top=10, halign=Gtk.Align.START)
+        add2.connect("clicked", lambda *_: AppShortcut({}, self.add_startup, need_keys=False).present(self.win))
+        grp.add(add2)
+        page.add(grp)
+
+        grp = Adw.PreferencesGroup(
             title="All shortcuts",
             description="Change keys or turn shortcuts off. Changes apply immediately; "
                         "Reset restores the original keys.")
@@ -833,6 +852,20 @@ class Settings(Adw.Application):
             rm.connect("clicked", lambda *_, i=i: self.remove_app(i))
             r.add_suffix(rm)
             self.apps_list.append(r)
+        # startup apps
+        self.start_list.remove_all()
+        if not user["autostart"]:
+            r = Adw.ActionRow(title="Nothing extra starts at login")
+            r.add_css_class("dim-label")
+            self.start_list.append(r)
+        for i, app in enumerate(user["autostart"]):
+            r = Adw.ActionRow(title=GLib.markup_escape_text(app["name"]),
+                              subtitle=GLib.markup_escape_text(app["cmd"]))
+            rm = Gtk.Button(icon_name="user-trash-symbolic", valign=Gtk.Align.CENTER, tooltip_text="Remove")
+            rm.add_css_class("flat")
+            rm.connect("clicked", lambda *_, i=i: self.remove_startup(i))
+            r.add_suffix(rm)
+            self.start_list.append(r)
         # every other bind, plus the ones turned off (not in Hyprland any more)
         self.binds_list.remove_all()
         self.kb_rows = []
@@ -895,6 +928,20 @@ class Settings(Adw.Application):
         user = read_binds()
         user["apps"].append(app)
         self.save_binds(user, f"{app['name']}: {app['keys']}")
+
+    def add_startup(self, app):
+        user = read_binds()
+        user["autostart"].append(app)
+        write_binds(user)                   # takes effect at next login; no reload needed
+        GLib.idle_add(lambda: self.refresh_binds() or False)
+        self.toast(f"{app['name']} will start at login")
+
+    def remove_startup(self, i):
+        user = read_binds()
+        app = user["autostart"].pop(i)
+        write_binds(user)
+        GLib.idle_add(lambda: self.refresh_binds() or False)
+        self.toast(f"{app['name']} won't start at login")
 
     def remove_app(self, i):
         user = read_binds()

@@ -71,6 +71,7 @@ Press **`Super+/`** for the full, searchable list (read live from your
 | `Super+Shift+R` / `Super+Alt+R` | Record a region / the screen (press again to stop) |
 | `Super+1/2/3` | Desktop 1/2/3 **of the monitor you're on** (each monitor has its own 3) |
 | `Super+Shift+1/2/3` | Move window to that desktop |
+| `Alt+Tab` | Window switcher (searchable, most recent first) |
 | `Super+.` | Emoji & symbol picker |
 | `Super+,` | Settings app |
 | `Super+Return` | Terminal (alacritty, frosted-glass blur) |
@@ -132,7 +133,9 @@ Press **`Super+/`** for the full, searchable list (read live from your
   default, 1-6 in Settings), numbered left to right -- the leftmost monitor
   has 1-3, the next 4-6, and so on -- and `Super+1/2/3` always means the
   focused monitor's own desktops. The bar on each monitor shows only its own.
-- **Keybind editor.** Settings -> Keybinds lists every shortcut live from
+- **Startup apps.** Settings -> Apps & Keys -> *Start at login* picks apps
+  to open when you log in.
+- **Keybind editor.** Settings -> Apps & Keys lists every shortcut live from
   Hyprland: change its keys (press the new combo; conflicts are caught, and
   Hyprland is paused while you press so nothing fires), turn it off, or
   reset it. *App shortcuts* adds a key combo for any installed app or a

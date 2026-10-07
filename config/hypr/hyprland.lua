@@ -262,8 +262,9 @@ hl.gesture({
 --     keys     = { ["close window"] = "SUPER + W" },   -- new keys, by description
 --     disabled = { ["pseudo-tile"] = true },
 --     apps     = { { keys = "SUPER + B", name = "Firefox", cmd = "gtk-launch firefox" } },
+--     autostart = { { name = "Discord", cmd = "gtk-launch discord" } },   -- run at login
 --   }
-local user_binds = { keys = {}, disabled = {}, apps = {} }
+local user_binds = { keys = {}, disabled = {}, apps = {}, autostart = {} }
 do
     local ok, t = pcall(dofile, os.getenv("HOME") .. "/.config/hypr-rice/binds.lua")
     if ok and type(t) == "table" then
@@ -404,6 +405,7 @@ for n = 1, WS do
     bind(mainMod .. " + SHIFT + " .. n, "move window to desktop " .. n,  on_this_monitor(n, true))
 end
 
+bind("ALT + Tab",                "window switcher",            hl.dsp.exec_cmd(bin .. "winswitch"))
 bind(mainMod .. " + Tab",        "previous desktop",           hl.dsp.focus({ workspace = "previous" }))
 bind(mainMod .. " + mouse_down", "next desktop (this monitor)", hl.dsp.focus({ workspace = "m+1" }))
 bind(mainMod .. " + mouse_up",   "prev desktop (this monitor)", hl.dsp.focus({ workspace = "m-1" }))
@@ -431,12 +433,17 @@ hl.define_submap("rice_capture", function()
     hl.bind("Escape", hl.dsp.submap("reset"), { non_consuming = true })
 end)
 
--- Your app shortcuts (added in Settings -> Keybinds)
+-- Your app shortcuts and startup apps (Settings -> Apps & Keys)
 for _, app in ipairs(user_binds.apps or {}) do
     if app.keys and app.cmd then
         bind(app.keys, "app: " .. (app.name or app.cmd), hl.dsp.exec_cmd(app.cmd))
     end
 end
+hl.on("hyprland.start", function()
+    for _, app in ipairs(user_binds.autostart or {}) do
+        if app.cmd then hl.exec_cmd(app.cmd) end
+    end
+end)
 
 
 ----------------------

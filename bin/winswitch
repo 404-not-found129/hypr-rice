@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Window switcher (Alt+Tab): every open window in a searchable walker menu,
+most recently used first (the current window last), with the desktop and
+monitor it's on. Picking one jumps to it."""
+import json
+import subprocess
+
+clients = json.loads(subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True).stdout or "[]")
+clients = [c for c in clients if c.get("mapped") and not c["workspace"]["name"].startswith("special")
+           and c.get("title")]
+# focusHistoryID 0 is the focused window: put it last so Enter on the
+# first entry goes to the previous window, like Alt+Tab
+clients.sort(key=lambda c: (c["focusHistoryID"] == 0, c["focusHistoryID"]))
+if not clients:
+    raise SystemExit
+
+import re
+from pathlib import Path
+look = Path.home() / ".config/hypr-rice/look.lua"
+m = re.search(r"workspaces_per_monitor\s*=\s*(\d+)", look.read_text()) if look.exists() else None
+WS = int(m.group(1)) if m else 3   # desktops are numbered per monitor (hyprland.lua)
+
+mons = json.loads(subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True).stdout or "[]")
+mon_name = {m["id"]: m["name"] for m in mons}
+
+lines = []
+for c in clients:
+    app = c.get("initialClass") or c.get("class") or "?"
+    wid = c["workspace"]["id"]
+    desk = (wid - 1) % WS + 1 if wid > 0 else c["workspace"]["name"]
+    where = f"desktop {desk} · {mon_name.get(c['monitor'], c['monitor'])}"
+    lines.append(f"{app[:24]:<24}  {c['title'][:70]}   [{where}]")
+
+choice = subprocess.run(["walker", "--dmenu", "-p", "Windows"], input="\n".join(lines),
+                        capture_output=True, text=True).stdout.strip()
+for line, c in zip(lines, clients):
+    if line.strip() == choice:
+        subprocess.run(["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{c["address"]}" }})'],
+                       capture_output=True)
+        break
