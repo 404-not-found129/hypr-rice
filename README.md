@@ -22,17 +22,17 @@ specific art.
 
 | Theme | Vibe | Waybar identity |
 |---|---|---|
-|  **elden-ring** | Erdtree gold on deep umber *(default)* | crossed swords, embers, hourglass |
-|  **ashen-flame** | dark fiery reds | flames, flask |
-|  **god-of-war** | Norse gold & frost, Kratos art | axe, sword, shield |
-|  **fallout** | Pip-Boy green terminal | radioactive, radio tower |
-|  **cyberpunk-2077** | Night City black & construct yellow | samurai skull, chips, lightning |
-|  **tokyo-night** | indigo night city | torii gate, crescent moon |
-|  **gruvbox** | warm retro amber | coffee + classic icons |
-|  **catppuccin-mocha** | pastel mauve | cat, paw, Pac-Man workspaces |
+| **elden-ring** | Erdtree gold on deep umber *(default)* | crossed swords, embers, hourglass |
+| **ashen-flame** | dark fiery reds | flames, flask |
+| **god-of-war** | Norse gold & frost, Kratos art | axe, sword, shield |
+| **fallout** | Pip-Boy green terminal | radioactive, radio tower |
+| **cyberpunk-2077** | Night City black & construct yellow | samurai skull, chips, lightning |
+| **tokyo-night** | indigo night city | torii gate, crescent moon |
+| **gruvbox** | warm retro amber | coffee + classic icons |
+| **catppuccin-mocha** | pastel mauve | cat, paw, Pac-Man workspaces |
 
 Each theme has its **own wallpaper collection** — cycling never leaks another
-theme's wallpapers — and an extra **auto mode** extracts a palette from
+theme's wallpapers (except **ashen-flame**, which shares elden-ring's) — and an extra **auto mode** extracts a palette from
 whatever wallpaper is currently showing.
 
 ## Keybinds (highlights)
@@ -46,7 +46,15 @@ whatever wallpaper is currently showing.
 | `Super+E` | File manager (thunar, theme-tinted folder icons) |
 | `Super+L` | Lock screen (hyprlock, themed) |
 | `Super+Alt+←/→`, `Super+↑/↓` | Move window focus |
-| `Print` / `Shift+Print` | Region / window screenshot |
+| `Super+Shift+arrows` / `Super+Ctrl+arrows` | Move / resize window |
+| `Super+1-9`, `Super+Shift+1-9` | Switch to / move window to workspace |
+| `Super+Q` | Close window |
+| `Super+F` / `Super+M` / `Super+V` | Fullscreen / maximize / toggle floating |
+| `Super+Shift+V` | Clipboard history |
+| `Super+Shift+N` | Notification center |
+| `Super+Shift+C` | Color picker |
+| `Super+Escape` | Power menu (wlogout) |
+| `Print` / `Shift+Print` / `Ctrl+Print` | Region / window / full-screen screenshot |
 
 ## Install
 
@@ -78,7 +86,7 @@ The installer:
    if you have neither.
 2. **Backs up** any configs it would overwrite to `~/.config-backup-<date>/`.
 3. Copies configs, scripts, and systemd user drop-ins into place.
-4. Installs the bundled wallpaper collections (all 8 themes), then fetches
+4. Installs the bundled wallpaper collections, then fetches
    anything missing from wallhaven as a fallback.
 5. Sets up folder-icon tinting (papirus-folders + an ACL so no password
    prompts on theme switch).
@@ -166,7 +174,8 @@ one), make a matching wallpaper folder in
   dispatch arguments are Lua (`hyprctl dispatch 'hl.dsp.exit()'`), not the
   classic syntax.
 - **A wallpaper failed to download** — wallhaven throttles sometimes; re-run
-  `./install.sh`, it skips what already exists.
+  the installer (the curl one-liner or `./install.sh`), it skips what
+  already exists.
 - **App icons don't change with the theme** — something (nwg-look,
   lxappearance, a distro default) may have put a hardcoded
   `gtk-icon-theme-name=` line back in `~/.config/gtk-3.0/settings.ini` or
