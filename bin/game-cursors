@@ -45,10 +45,18 @@ if BUILD_ONLY:
         ext = bp.get("palette", {}).get("extendedColors", {})
         accent = ext.get("accent", "#d4a017").lstrip("#")
         cursor_hl = ext.get("cursor", "#" + accent).lstrip("#")
+    # Omarchy themes keep their palette in colors.toml instead of a blueprint
+    omarchy_toml = HOME / ".config/omarchy/themes" / theme / "colors.toml"
+    if not bp_file.exists() and omarchy_toml.exists():
+        t = omarchy_toml.read_text()
+        m = re.search(r'^accent\s*=\s*"#([0-9a-fA-F]{6})"', t, re.M)
+        accent = m.group(1) if m else accent
+        m2 = re.search(r'^cursor\s*=\s*"#([0-9a-fA-F]{6})"', t, re.M)
+        cursor_hl = m2.group(1) if m2 else accent
 else:
-    state = HOME / ".config/aether/current-theme"
+    state = Path(os.environ.get("HYPR_RICE_THEME_FILE", HOME / ".config/aether/current-theme"))
     theme = state.read_text().strip() if state.exists() else "default"
-    toml = (HOME / ".config/aether/theme/colors.toml").read_text()
+    toml = Path(os.environ.get("HYPR_RICE_COLORS", HOME / ".config/aether/theme/colors.toml")).read_text()
     m = re.search(r'^accent\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)
     accent = m.group(1) if m else "d4a017"
     m2 = re.search(r'^cursor\s*=\s*"#([0-9a-fA-F]{6})"', toml, re.M)

@@ -58,7 +58,11 @@ whatever wallpaper is currently showing.
 
 ## Install
 
-**Requirements:** Arch Linux, Hyprland ≥ 0.55 (the config is Lua —
+> **On [Omarchy](https://omarchy.org)?** Use the [Omarchy installer](#omarchy)
+> instead — it adds the themes without replacing Omarchy's keybinds, bar or
+> Hyprland config.
+
+**Requirements (full install):** Arch Linux, Hyprland ≥ 0.55 (the config is Lua —
 `hyprland.lua`), an internet connection, and `sudo`.
 
 **One-liner:**
@@ -96,6 +100,39 @@ It is **idempotent** — safe to re-run (e.g. to retry failed wallpaper
 downloads).
 
 Afterwards, log into Hyprland and press `Super+T` to apply your first theme.
+
+## Omarchy
+
+`install-omarchy.sh` plugs the rice into [Omarchy](https://omarchy.org)'s own
+theme system instead of replacing it. Your keybinds, bar, launcher, terminals
+and Hyprland config stay exactly as Omarchy set them up.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/404-not-found129/hypr-rice/main/install-omarchy.sh | bash
+```
+
+(or `./install-omarchy.sh` from a clone). It:
+
+1. Adds **elden-ring**, **ashen-flame**, **god-of-war**, **fallout**,
+   **cyberpunk-2077** and **catppuccin-mocha** as Omarchy themes in
+   `~/.config/omarchy/themes/` — a `colors.toml` (generated from the Aether
+   blueprints) plus the theme's wallpaper collection. Omarchy renders
+   borders, terminals, the bar, btop, etc. from those colors as usual.
+2. Adds the rice's wallpapers to Omarchy's stock **gruvbox** and
+   **tokyo-night** (their colors stay Omarchy's).
+3. Installs a `theme-set` hook (`~/.config/omarchy/hooks/theme-set.d/hypr-rice.sh`)
+   that, on a rice theme, generates the badged app icons, the recolored
+   cursor set and tinted Papirus folders. Switching to any other theme
+   puts Omarchy's own icons and cursor back.
+4. Makes `ls` (eza) colors follow whichever theme is active.
+
+Pick a theme from Omarchy's theme menu (`Super+Ctrl+Shift+Space`) or with
+`omarchy theme set elden-ring`. Cycle wallpapers with Omarchy's background
+switcher (`Super+Ctrl+Space`).
+
+To remove it: delete the six theme folders above from `~/.config/omarchy/themes/`,
+the `gruvbox`/`tokyo-night` links in `~/.config/omarchy/backgrounds/`, and the
+hook, then switch to any Omarchy theme.
 
 ## How it works
 

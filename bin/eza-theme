@@ -6,6 +6,7 @@ the environment. We generate one that accents the size, date, owner and
 directory columns with the theme's accent/cursor colors, and source it from
 ~/.config/eza/colors.sh in .bashrc. Called from the Aether post-apply hook.
 """
+import os
 import re
 from pathlib import Path
 
@@ -18,7 +19,7 @@ def rgb(hexcol, fallback):
     return f"38;2;{int(h[0:2],16)};{int(h[2:4],16)};{int(h[4:6],16)}"
 
 
-toml_path = HOME / ".config/aether/theme/colors.toml"
+toml_path = Path(os.environ.get("HYPR_RICE_COLORS", Path.home() / ".config/aether/theme/colors.toml"))
 cols = {}
 if toml_path.exists():
     for mt in re.finditer(r'^(\w+)\s*=\s*"([^"]*)"', toml_path.read_text(), re.M):

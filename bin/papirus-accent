@@ -2,12 +2,13 @@
 """Map the current Aether accent color to the nearest Papirus folder color
 and apply it with papirus-folders. Called from Aether's post-apply hook."""
 import colorsys
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-toml = Path.home() / ".config/aether/theme/colors.toml"
+toml = Path(os.environ.get("HYPR_RICE_COLORS", Path.home() / ".config/aether/theme/colors.toml"))
 m = re.search(r'^accent\s*=\s*"#([0-9a-fA-F]{6})"', toml.read_text(), re.M)
 if not m:
     sys.exit(0)
