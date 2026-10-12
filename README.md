@@ -53,6 +53,18 @@ whatever wallpaper is currently showing.
 **Requirements:** Arch Linux, Hyprland ≥ 0.55 (the config is Lua —
 `hyprland.lua`), an internet connection, and `sudo`.
 
+**One-liner:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/404-not-found129/hypr-rice/main/install.sh | bash
+```
+
+This clones the repo into `~/.local/share/hypr-rice` (or updates it if it's
+already there) and runs the installer from it. Run the same command again
+later to pull updates and re-apply.
+
+**Or manually:**
+
 ```bash
 git clone https://github.com/404-not-found129/hypr-rice.git && cd hypr-rice
 chmod +x install.sh

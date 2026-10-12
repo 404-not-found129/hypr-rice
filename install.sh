@@ -11,13 +11,29 @@ warn()  { printf '%s[!]%s %s\n' "$YLW" "$RST" "$*"; }
 die()   { printf '%s[x]%s %s\n' "$RED" "$RST" "$*" >&2; exit 1; }
 trap 'die "Install failed at line $LINENO. Fix the issue and re-run — the script is idempotent."' ERR
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)"
 BACKUP="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
 
 # ---------------------------------------------------------------- checks ----
 [[ -f /etc/arch-release ]] || die "This installer targets Arch Linux (pacman)."
 [[ $EUID -eq 0 ]] && die "Run as your normal user, not root (sudo is used where needed)."
 command -v sudo >/dev/null || die "sudo is required."
+
+# ------------------------------------------------------------- bootstrap ----
+# Piped from curl there is no checkout next to the script: clone (or update)
+# one and re-run from it, with the terminal as stdin so prompts still work.
+if [[ ! -d $REPO/config ]]; then
+  SRC="$HOME/.local/share/hypr-rice"
+  command -v git >/dev/null || sudo pacman -S --needed --noconfirm git
+  if [[ -d $SRC/.git ]]; then
+    info "Updating hypr-rice in $SRC..."
+    git -C "$SRC" pull --ff-only
+  else
+    info "Cloning hypr-rice into $SRC..."
+    git clone --depth 1 https://github.com/404-not-found129/hypr-rice.git "$SRC"
+  fi
+  exec bash "$SRC/install.sh" "$@" </dev/tty
+fi
 
 info "This will install packages and place configs for: Hyprland (Lua config),"
 info "waybar, alacritty/kitty, Aether theming, theme switcher and wallpaper cycling."
