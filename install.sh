@@ -56,7 +56,7 @@ PACMAN_DEPS=(
   network-manager-applet thunar pavucontrol pamixer wl-clipboard
   papirus-icon-theme breeze-cursors xorg-xcursorgen ttf-jetbrains-mono-nerd
   fastfetch eza btop imagemagick curl python python-gobject gtk4 acl polkit
-  rofi-wayland git base-devel
+  rofi-wayland git base-devel ffmpeg file
 )
 AUR_DEPS=(
   aether walker-bin wlogout
@@ -116,6 +116,7 @@ grep -rlZ "__HOME__" "$HOME/.config/hypr" "$HOME/.config/waybar" \
 install_papirus_folders
 
 install_wallpapers
+install_live_wallpapers
 
 # ------------------------------------------------------------- defaults -----
 info "Setting the default theme (elden-ring)..."

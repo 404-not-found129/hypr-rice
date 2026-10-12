@@ -126,45 +126,48 @@ curl -fsSL https://raw.githubusercontent.com/404-not-found129/hypr-rice/main/ins
    cursor set and tinted Papirus folders. Switching to any other theme
    puts Omarchy's own icons and cursor back.
 4. Makes `ls` (eza) colors follow whichever theme is active.
-5. Sets up [video wallpapers](#video-wallpapers) — for the rice themes *and*
-   any of Omarchy's own.
+5. Makes every rice theme's wallpapers [animated](#video-wallpapers) — 4K
+   videos you switch between with Omarchy's own background switcher.
 
 Pick a theme from Omarchy's theme menu (`Super+Ctrl+Shift+Space`) or with
-`omarchy theme set elden-ring`. Cycle wallpapers with Omarchy's background
-switcher (`Super+Ctrl+Space`).
+`omarchy theme set elden-ring`. Switch between a theme's animated wallpapers
+with Omarchy's background switcher (`Super+Ctrl+Space`).
 
 To remove it: delete the six theme folders above from `~/.config/omarchy/themes/`,
-the `gruvbox`/`tokyo-night` links in `~/.config/omarchy/backgrounds/`, and the
-hook, then switch to any Omarchy theme.
+the rice's folders in `~/.config/omarchy/backgrounds/`, and the two
+`hypr-rice.sh` hooks in `~/.config/omarchy/hooks/`, then switch to any Omarchy
+theme.
 
 ## Video wallpapers
 
-Any theme can have a live (video) wallpaper — on both installs, and on
-Omarchy for its stock themes too. Drop `.mp4` / `.webm` / `.mkv` / `.mov`
-files into:
+Every theme comes with **animated wallpapers** — five or six 4K looping
+videos each (elden-ring, ashen-flame, god-of-war, fallout, cyberpunk-2077,
+tokyo-night, gruvbox, catppuccin-mocha). Both installers offer to download
+them (~1.2 GB) into `~/Pictures/wallpapers/live/<theme>/`; they aren't in
+this repo — they're fan uploads hosted on [MotionBGs](https://motionbgs.com),
+listed in [`wallpapers/live-manifest.txt`](wallpapers/live-manifest.txt) and
+fetched for personal use. Skipped them? `live-wallpaper fetch` any time.
 
-```
-~/Pictures/wallpapers/live/<theme>/      e.g. live/elden-ring/erdtree.mp4
-```
+**Switching between them**
 
-Switching to that theme plays its video; a theme with none shows its still
-wallpaper as before. The repo doesn't ship videos (game footage isn't ours to
-redistribute), so bring your own — any looping clip works.
+- **Omarchy:** they *are* the theme's wallpapers. Each video's first frame is
+  added to Omarchy's backgrounds, so the regular background switcher
+  (`Super+Ctrl+Space`) and `omarchy theme bg next` pick between videos, and
+  the chosen one plays. Picking a theme plays its first video.
+- **Full install:** `Super+←/→` cycles the theme's videos; `Super+Shift+W`
+  turns video off/on (falling back to the still wallpapers).
+- Anywhere: `live-wallpaper next` / `prev`, `live-wallpaper off` / `on`.
 
-Videos are played by [mpvpaper](https://github.com/GhostNaN/mpvpaper) (no
-audio, hardware decoding, paused automatically while windows cover the whole
-screen). It sits above the still wallpaper and below your windows and bar,
-and lets clicks through, so Omarchy's desktop double-click menus still work.
+**Adding your own:** drop `.mp4` / `.webm` / `.mkv` / `.mov` files into
+`~/Pictures/wallpapers/live/<theme>/` (any theme, Omarchy's stock ones too)
+and run `live-wallpaper posters`.
 
-| Command | |
-|---|---|
-| `live-wallpaper next` / `prev` | Next / previous video for the current theme |
-| `live-wallpaper off` / `on` / `toggle` | Disable / enable video wallpapers (remembered) |
-
-On the full install `Super+Shift+W` toggles them and `Super+←/→` cycles
-videos instead of stills while one is playing. On Omarchy no keys are added
-(your keybinds stay Omarchy's) — bind them yourself in
-`~/.config/hypr/bindings.lua` if you like, e.g.
+Videos are played by [mpvpaper](https://github.com/GhostNaN/mpvpaper): no
+audio, hardware decoding, paused while windows cover the whole screen. It
+sits above the still wallpaper and below your windows and bar, and lets
+clicks through, so Omarchy's desktop double-click menus still work. On
+Omarchy no keys are added (your keybinds stay Omarchy's); to bind a toggle,
+add to `~/.config/hypr/bindings.lua`:
 `o.bind("SUPER + ALT + W", "Live wallpaper", "~/.local/bin/live-wallpaper toggle")`
 (`Super+Shift+W` is taken by Omarchy).
 

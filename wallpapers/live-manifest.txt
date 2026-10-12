@@ -1,0 +1,51 @@
+# Video wallpapers fetched by `live-wallpaper fetch` (and offered by the
+# installers). Not part of this repo: they're fan uploads hosted on
+# motionbgs.com, downloaded for personal use. All 4K (3840x2160).
+# <theme> <name> <url>
+elden-ring        full-moon            https://motionbgs.com/dl/4k/6572
+elden-ring        shadow-of-erdtree    https://motionbgs.com/dl/4k/5457
+elden-ring        black-blade          https://motionbgs.com/dl/4k/4395
+elden-ring        malenia              https://motionbgs.com/dl/4k/7018
+elden-ring        ranni                https://motionbgs.com/dl/4k/2747
+elden-ring        lunar-ranni          https://motionbgs.com/dl/4k/6596
+ashen-flame       bonfire              https://motionbgs.com/dl/4k/5058
+ashen-flame       fireplace            https://motionbgs.com/dl/4k/5432
+ashen-flame       night-campfire       https://motionbgs.com/dl/4k/6728
+ashen-flame       ashen-one            https://motionbgs.com/dl/4k/4303
+ashen-flame       lothric-wanderer     https://motionbgs.com/dl/4k/2559
+ashen-flame       irithyll             https://motionbgs.com/dl/4k/4204
+god-of-war        leviathan-axe        https://motionbgs.com/dl/4k/2838
+god-of-war        winter-hunt          https://motionbgs.com/dl/4k/10235
+god-of-war        snowy-peaks          https://motionbgs.com/dl/4k/2827
+god-of-war        ice-and-fire         https://motionbgs.com/dl/4k/2828
+god-of-war        sunset-kratos        https://motionbgs.com/dl/4k/6946
+god-of-war        troll-fight          https://motionbgs.com/dl/4k/2107
+fallout           new-vegas            https://motionbgs.com/dl/4k/5773
+fallout           capital-wasteland    https://motionbgs.com/dl/4k/6049
+fallout           liberty-prime        https://motionbgs.com/dl/4k/7774
+fallout           far-harbor           https://motionbgs.com/dl/4k/6051
+fallout           power-armor-t60      https://motionbgs.com/dl/4k/5586
+fallout           red-rocket           https://motionbgs.com/dl/4k/10295
+cyberpunk-2077    echoes-of-night-city https://motionbgs.com/dl/4k/9382
+cyberpunk-2077    neon-alley           https://motionbgs.com/dl/4k/3704
+cyberpunk-2077    night-city-vibes     https://motionbgs.com/dl/4k/7019
+cyberpunk-2077    samurai              https://motionbgs.com/dl/4k/3625
+cyberpunk-2077    lucy                 https://motionbgs.com/dl/4k/8735
+cyberpunk-2077    badlands             https://motionbgs.com/dl/4k/4430
+tokyo-night       midnight-rain        https://motionbgs.com/dl/4k/9963
+tokyo-night       rain-reflections     https://motionbgs.com/dl/4k/8592
+tokyo-night       night-village        https://motionbgs.com/dl/4k/5315
+tokyo-night       rainy-skyline        https://motionbgs.com/dl/4k/4551
+tokyo-night       street-lights        https://motionbgs.com/dl/4k/3966
+tokyo-night       rainy-window         https://motionbgs.com/dl/4k/3535
+gruvbox           cozy-fireplace       https://motionbgs.com/dl/4k/3858
+gruvbox           autumn-cat           https://motionbgs.com/dl/4k/7204
+gruvbox           mushroom-campfire    https://motionbgs.com/dl/4k/8823
+gruvbox           chibi-campfire       https://motionbgs.com/dl/4k/9399
+gruvbox           campfire-vigil       https://motionbgs.com/dl/4k/5906
+catppuccin-mocha  urban-calm-cat       https://motionbgs.com/dl/4k/8234
+catppuccin-mocha  waiting-with-stars   https://motionbgs.com/dl/4k/7970
+catppuccin-mocha  purple-sky           https://motionbgs.com/dl/4k/4234
+catppuccin-mocha  pastel-bloom         https://motionbgs.com/dl/4k/7846
+catppuccin-mocha  morning-coffee       https://motionbgs.com/dl/4k/7032
+catppuccin-mocha  halloween-cat        https://motionbgs.com/dl/4k/6688

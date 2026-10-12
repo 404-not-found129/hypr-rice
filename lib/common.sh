@@ -62,9 +62,21 @@ install_wallpapers() {
   cp -n "$REPO/wallpapers/catppuccin-evening-sky.png" "$HOME/Pictures/wallpapers/collections/catppuccin-mocha/" 2>/dev/null || true
   ln -sfn elden-ring "$HOME/Pictures/wallpapers/collections/ashen-flame"
 
-  # Drop-in folders for video wallpapers (played by bin/live-wallpaper)
-  local t
+}
+
+# Video wallpapers: fetched from wallpapers/live-manifest.txt (4K, ~1.2 GB),
+# played by bin/live-wallpaper. Optional; asks first.
+install_live_wallpapers() {
+  local live="$HOME/Pictures/wallpapers/live" t
   for t in "$REPO/config/aether/blueprints/"*.json; do
-    mkdir -p "$HOME/Pictures/wallpapers/live/$(basename "$t" .json)"
+    mkdir -p "$live/$(basename "$t" .json)"
   done
+  cp "$REPO/wallpapers/live-manifest.txt" "$live/manifest.txt"
+
+  read -rp "Download the animated (video) wallpapers, ~1.2 GB? [Y/n] " a
+  if [[ ${a,,} != n* ]]; then
+    info "Downloading video wallpapers (skips ones you already have)..."
+    "$REPO/bin/live-wallpaper" fetch \
+      || warn "Some videos failed to download — re-run: live-wallpaper fetch"
+  fi
 }

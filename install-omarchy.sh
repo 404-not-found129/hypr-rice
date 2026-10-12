@@ -40,14 +40,14 @@ fi
 source "$REPO/lib/common.sh"
 
 info "This adds the hypr-rice game themes to Omarchy's theme menu, with themed"
-info "app icons, cursors, folder colors and video wallpapers. Your keybinds, bar"
+info "app icons, cursors, folder colors and animated wallpapers. Your keybinds, bar"
 info "and Hyprland config are not touched."
 read -rp "Continue? [y/N] " a; [[ ${a,,} == y* ]] || exit 0
 
 # ---------------------------------------------------------- dependencies ----
 DEPS=(
   papirus-icon-theme breeze-cursors xorg-xcursorgen librsvg imagemagick
-  python acl curl
+  python acl curl ffmpeg inotify-tools file
 )
 AUR_DEPS=(mpvpaper)
 mapfile -t need < <(missing "${DEPS[@]}")
@@ -71,34 +71,37 @@ done
 
 install_papirus_folders
 install_wallpapers
+install_live_wallpapers
 
 # ---------------------------------------------------------------- themes ----
-collections="$HOME/Pictures/wallpapers/collections"
+# A theme with videos gets them as its wallpapers (live-wallpaper posters
+# copies their posters into ~/.config/omarchy/backgrounds/<theme>/); one
+# without falls back to its still collection.
+has_videos() { compgen -G "$HOME/Pictures/wallpapers/live/$1/*.mp4" >/dev/null; }
+stills="$HOME/Pictures/wallpapers/collections"
+
 info "Adding themes to ~/.config/omarchy/themes..."
 for dir in "$REPO/omarchy/themes/"*/; do
   t=$(basename "$dir")
   dest="$HOME/.config/omarchy/themes/$t"
   mkdir -p "$dest"
   cp "$dir/colors.toml" "$dest/colors.toml"
-  if [[ -L $dest/backgrounds || ! -e $dest/backgrounds ]]; then
-    ln -sfn "$collections/$t" "$dest/backgrounds"
-  else
-    warn "$dest/backgrounds already exists — leaving it alone."
+  if ! has_videos "$t" && [[ -L $dest/backgrounds || ! -e $dest/backgrounds ]]; then
+    ln -sfn "$stills/$t" "$dest/backgrounds"
   fi
-  printf '  %s\n' "$t"
+  printf '  %s%s\n' "$t" "$(has_videos "$t" && echo " (animated)")"
 done
 
 # Omarchy already ships these themes: keep its colors, add the rice's wallpapers
 for t in gruvbox tokyo-night; do
   bg="$HOME/.config/omarchy/backgrounds/$t"
-  if [[ -L $bg || ! -e $bg ]]; then
+  if ! has_videos "$t" && [[ -L $bg || ! -e $bg ]]; then
     mkdir -p "$(dirname "$bg")"
-    ln -sfn "$collections/$t" "$bg"
-    printf '  %s (wallpapers only, Omarchy colors)\n' "$t"
-  else
-    warn "$bg already exists — not adding the rice's $t wallpapers."
+    ln -sfn "$stills/$t" "$bg"
   fi
+  printf '  %s (Omarchy colors, rice wallpapers%s)\n' "$t" "$(has_videos "$t" && echo ", animated")"
 done
+"$HOME/.local/bin/live-wallpaper" posters
 
 # ------------------------------------------------------------------ hook ----
 # Remember Omarchy's cursor so the hook can restore it on non-rice themes
@@ -127,7 +130,9 @@ if ! grep -q "eza/colors.sh" "$HOME/.bashrc" 2>/dev/null; then
   info "Added eza theme colors to ~/.bashrc"
 fi
 
-"$HOME/.local/bin/live-wallpaper" || true   # start the current theme's video, if it has one
+# Follow the background from now on (the post-boot hook does this at login)
+pkill -f "live-wallpaper watch" 2>/dev/null || true
+setsid "$HOME/.local/bin/live-wallpaper" watch >/dev/null 2>&1 </dev/null &
 
 echo
 info "${BLD}Done!${RST} Pick a theme from Omarchy's theme menu (Super+Ctrl+Shift+Space),"
@@ -136,5 +141,5 @@ echo
 echo "  Rice themes: elden-ring, ashen-flame, god-of-war, fallout, cyberpunk-2077,"
 echo "  catppuccin-mocha, plus extra wallpapers for Omarchy's gruvbox and tokyo-night."
 echo
-echo "  Video wallpapers: drop mp4/webm files into ~/Pictures/wallpapers/live/<theme>/"
-echo "  (works for any Omarchy theme). Control: live-wallpaper next | prev | off | on"
+echo "  Animated wallpapers: switch between a theme's videos with Omarchy's background"
+echo "  switcher (Super+Ctrl+Space). Skipped the download? Run: live-wallpaper fetch"
