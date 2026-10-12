@@ -56,8 +56,16 @@ AUR_DEPS=(
   elephant-websearch-bin
 )
 
-info "Installing official packages (pacman)..."
-sudo pacman -S --needed --noconfirm "${PACMAN_DEPS[@]}"
+# Only install what isn't already satisfied: an installed package that
+# *provides* a dep (e.g. ttf-jetbrains-mono-nerd-basic) counts, so pacman
+# never hits a conflict prompt that --noconfirm would answer "no" to.
+missing() { pacman -T "$@" || true; }
+
+mapfile -t need < <(missing "${PACMAN_DEPS[@]}")
+if ((${#need[@]})); then
+  info "Installing official packages (pacman)..."
+  sudo pacman -S --needed --noconfirm "${need[@]}"
+fi
 
 aur_helper=""
 for h in yay paru; do command -v "$h" >/dev/null && aur_helper=$h && break; done
@@ -69,8 +77,11 @@ if [[ -z $aur_helper ]]; then
   rm -rf "$tmp"
   aur_helper=yay
 fi
-info "Installing AUR packages ($aur_helper)..."
-"$aur_helper" -S --needed --noconfirm "${AUR_DEPS[@]}"
+mapfile -t need < <(missing "${AUR_DEPS[@]}")
+if ((${#need[@]})); then
+  info "Installing AUR packages ($aur_helper)..."
+  "$aur_helper" -S --needed --noconfirm "${need[@]}"
+fi
 
 # ------------------------------------------------------------- configs ------
 backup() { # backup <path>
