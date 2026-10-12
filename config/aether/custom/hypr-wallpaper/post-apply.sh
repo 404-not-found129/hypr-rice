@@ -4,6 +4,7 @@
 wp=$(ls -t "$HOME/.config/aether/theme/backgrounds/"* 2>/dev/null | head -n1)
 [ -n "$wp" ] && ln -sf "$wp" "$HOME/Pictures/wallpapers/wall.png"
 awww img "$HOME/Pictures/wallpapers/wall.png" --transition-type grow --transition-pos center
+"$HOME/.local/bin/live-wallpaper" >/dev/null 2>&1   # theme's video wallpaper, if it has one
 hyprctl reload
 "$HOME/.local/bin/waybar-theme-icons" >/dev/null 2>&1   # per-theme logo/workspace icons
 pkill -SIGUSR2 waybar   # reload config + style with the new palette

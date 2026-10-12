@@ -1,0 +1,82 @@
+#!/bin/bash
+# Video wallpaper for the active theme, played by mpvpaper on the "bottom"
+# layer: above the still wallpaper (Omarchy's or awww's), below windows and
+# the bar, and click-through, so desktop clicks still reach what's under it.
+#
+# Videos live in ~/Pictures/wallpapers/live/<theme>/ (mp4, webm, mkv, mov).
+# A theme with none just shows its still wallpaper.
+#
+# Usage: live-wallpaper [<theme>]   start/keep the theme's video (default: active theme)
+#        live-wallpaper next|prev   switch to the theme's next/previous video
+#        live-wallpaper off|on      disable/enable live wallpapers (remembered)
+#        live-wallpaper toggle
+#        live-wallpaper stop        stop playback for now
+
+LIVE="$HOME/Pictures/wallpapers/live"
+STATE="$HOME/.local/state/hypr-rice"
+CURRENT="$STATE/live-current"      # video currently playing
+DISABLED="$STATE/live-disabled"
+mkdir -p "$STATE"
+
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/hypr-rice-live.lock"
+flock 9
+
+active_theme() {
+  if [[ -n $HYPR_RICE_THEME_FILE ]]; then
+    cat "$HYPR_RICE_THEME_FILE"
+  elif command -v omarchy >/dev/null && [[ -f $HOME/.local/state/omarchy/current/theme.name ]]; then
+    cat "$HOME/.local/state/omarchy/current/theme.name"
+  else
+    cat "$HOME/.config/aether/current-theme" 2>/dev/null
+  fi
+}
+
+stop() {
+  pkill -x mpvpaper
+  for _ in {1..20}; do pgrep -x mpvpaper >/dev/null || break; sleep 0.1; done
+  rm -f "$CURRENT"
+}
+
+play() { # play <video>
+  # Same video already up (e.g. a re-apply of the same theme): leave it be
+  [[ $(cat "$CURRENT" 2>/dev/null) == "$1" ]] && pgrep -x mpvpaper >/dev/null && return
+  stop
+  mpvpaper -f -l bottom -p -o "no-audio loop panscan=1.0 hwdec=auto" '*' "$1" >/dev/null 2>&1 9>&-
+  printf '%s\n' "$1" > "$CURRENT"
+}
+
+videos() { # videos <theme> -> sorted list
+  find -L "$LIVE/$1" -maxdepth 1 -type f \
+    \( -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' \) 2>/dev/null | sort
+}
+
+start() { # start <theme> [next|prev]
+  [[ -f $DISABLED ]] && { stop; return; }
+  mapfile -t vids < <(videos "$1")
+  if (( ${#vids[@]} == 0 )); then
+    stop
+    return
+  fi
+
+  local cur idx=-1 i n=${#vids[@]}
+  cur=$(cat "$CURRENT" 2>/dev/null)
+  for i in "${!vids[@]}"; do [[ ${vids[$i]} == "$cur" ]] && idx=$i && break; done
+
+  case $2 in
+    next) idx=$(( (idx + 1) % n )) ;;
+    prev) idx=$(( idx < 0 ? n - 1 : (idx - 1 + n) % n )) ;;
+    *)    (( idx < 0 )) && idx=0 ;;
+  esac
+  play "${vids[$idx]}"
+}
+
+case ${1:-} in
+  next|prev) start "$(active_theme)" "$1" ;;
+  off)       touch "$DISABLED"; stop ;;
+  on)        rm -f "$DISABLED"; start "$(active_theme)" ;;
+  toggle)    if [[ -f $DISABLED ]]; then rm -f "$DISABLED"; start "$(active_theme)"
+             else touch "$DISABLED"; stop; fi ;;
+  stop)      stop ;;
+  "")        start "$(active_theme)" ;;
+  *)         start "$1" ;;
+esac

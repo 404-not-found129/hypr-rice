@@ -63,7 +63,7 @@ AUR_DEPS=(
   elephant-bin elephant-desktopapplications-bin elephant-runner-bin
   elephant-calc-bin elephant-clipboard-bin elephant-files-bin
   elephant-menus-bin elephant-providerlist-bin elephant-symbols-bin
-  elephant-websearch-bin
+  elephant-websearch-bin mpvpaper
 )
 
 mapfile -t need < <(missing "${PACMAN_DEPS[@]}")
@@ -72,16 +72,7 @@ if ((${#need[@]})); then
   sudo pacman -S --needed --noconfirm "${need[@]}"
 fi
 
-aur_helper=""
-for h in yay paru; do command -v "$h" >/dev/null && aur_helper=$h && break; done
-if [[ -z $aur_helper ]]; then
-  info "No AUR helper found — bootstrapping yay..."
-  tmp=$(mktemp -d)
-  git clone --depth 1 https://aur.archlinux.org/yay-bin.git "$tmp/yay-bin"
-  (cd "$tmp/yay-bin" && makepkg -si --noconfirm)
-  rm -rf "$tmp"
-  aur_helper=yay
-fi
+ensure_aur_helper
 mapfile -t need < <(missing "${AUR_DEPS[@]}")
 if ((${#need[@]})); then
   info "Installing AUR packages ($aur_helper)..."
@@ -111,7 +102,7 @@ cp "$REPO/config/aether/blueprints/"*.json "$HOME/.config/aether/blueprints/"
 
 mkdir -p "$HOME/.local/bin"
 cp "$REPO/bin/"* "$HOME/.local/bin/"
-chmod +x "$HOME/.local/bin/"{wallcycle,themeswitch,papirus-accent,waybar-theme-icons} \
+chmod +x "$HOME/.local/bin/"{wallcycle,themeswitch,papirus-accent,waybar-theme-icons,live-wallpaper} \
          "$HOME/.config/aether/custom/hypr-wallpaper/post-apply.sh"
 
 mkdir -p "$HOME/.config/systemd/user"

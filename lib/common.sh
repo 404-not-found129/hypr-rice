@@ -5,6 +5,21 @@
 # never hits a conflict prompt that --noconfirm would answer "no" to.
 missing() { pacman -T "$@" || true; }
 
+# Sets aur_helper to yay or paru, bootstrapping yay if neither is installed.
+ensure_aur_helper() {
+  aur_helper=""
+  for h in yay paru; do command -v "$h" >/dev/null && aur_helper=$h && break; done
+  if [[ -z $aur_helper ]]; then
+    info "No AUR helper found — bootstrapping yay..."
+    local tmp
+    tmp=$(mktemp -d)
+    git clone --depth 1 https://aur.archlinux.org/yay-bin.git "$tmp/yay-bin"
+    (cd "$tmp/yay-bin" && makepkg -si --noconfirm)
+    rm -rf "$tmp"
+    aur_helper=yay
+  fi
+}
+
 # papirus-folders + an ACL on the Papirus themes, so folder icons can be
 # re-tinted to each theme's accent without a password prompt.
 install_papirus_folders() {
@@ -46,4 +61,10 @@ install_wallpapers() {
   mkdir -p "$HOME/Pictures/wallpapers/collections/catppuccin-mocha"
   cp -n "$REPO/wallpapers/catppuccin-evening-sky.png" "$HOME/Pictures/wallpapers/collections/catppuccin-mocha/" 2>/dev/null || true
   ln -sfn elden-ring "$HOME/Pictures/wallpapers/collections/ashen-flame"
+
+  # Drop-in folders for video wallpapers (played by bin/live-wallpaper)
+  local t
+  for t in "$REPO/config/aether/blueprints/"*.json; do
+    mkdir -p "$HOME/Pictures/wallpapers/live/$(basename "$t" .json)"
+  done
 }

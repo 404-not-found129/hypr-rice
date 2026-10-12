@@ -8,6 +8,11 @@ theme=$(cat "$state" 2>/dev/null)
 dir="$HOME/Pictures/wallpapers/collections/$theme"
 [ -d "$dir" ] || dir="$HOME/Pictures/wallpapers/collections/elden-ring"
 
+# A video wallpaper covers the stills: cycle the theme's videos instead
+if pgrep -x mpvpaper >/dev/null; then
+    exec "$HOME/.local/bin/live-wallpaper" "${1:-next}"
+fi
+
 # Shared lock with themeswitch: never run two aether applies at once.
 # Extra presses while one is running are ignored.
 exec 9>/tmp/aether-apply.lock

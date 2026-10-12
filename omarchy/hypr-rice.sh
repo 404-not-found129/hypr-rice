@@ -3,8 +3,10 @@
 # hypr-rice theme-set hook for Omarchy (installed by install-omarchy.sh into
 # ~/.config/omarchy/hooks/theme-set.d/). Omarchy itself handles colors,
 # wallpaper, borders, terminals and the bar; this adds the rice's extras:
-# badged app icons, recolored cursors and tinted Papirus folders on the rice
-# themes, and restores Omarchy's own icons/cursor on any other theme.
+# the theme's video wallpaper (any theme with videos in
+# ~/Pictures/wallpapers/live/<theme>/), and badged app icons, recolored
+# cursors and tinted Papirus folders on the rice themes -- restoring
+# Omarchy's own icons/cursor on any other theme.
 #
 theme=$1
 RICE_THEMES=(elden-ring ashen-flame god-of-war fallout cyberpunk-2077 tokyo-night gruvbox catppuccin-mocha)
@@ -13,6 +15,8 @@ bin=$HOME/.local/bin
 icons=$HOME/.local/share/icons
 export HYPR_RICE_THEME_FILE=$HOME/.local/state/omarchy/current/theme.name
 export HYPR_RICE_COLORS=$HOME/.local/state/omarchy/current/theme/colors.toml
+
+"$bin/live-wallpaper" "$theme"   # quick, so it switches along with the theme
 
 apply() {
   # Serialize: switching themes quickly must not run two icon builds at once

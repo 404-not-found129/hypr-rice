@@ -40,8 +40,8 @@ fi
 source "$REPO/lib/common.sh"
 
 info "This adds the hypr-rice game themes to Omarchy's theme menu, with themed"
-info "app icons, cursors and folder colors. Your keybinds, bar and Hyprland"
-info "config are not touched."
+info "app icons, cursors, folder colors and video wallpapers. Your keybinds, bar"
+info "and Hyprland config are not touched."
 read -rp "Continue? [y/N] " a; [[ ${a,,} == y* ]] || exit 0
 
 # ---------------------------------------------------------- dependencies ----
@@ -49,16 +49,23 @@ DEPS=(
   papirus-icon-theme breeze-cursors xorg-xcursorgen librsvg imagemagick
   python acl curl
 )
+AUR_DEPS=(mpvpaper)
 mapfile -t need < <(missing "${DEPS[@]}")
 if ((${#need[@]})); then
   info "Installing packages (pacman)..."
   sudo pacman -S --needed --noconfirm "${need[@]}"
 fi
+mapfile -t need < <(missing "${AUR_DEPS[@]}")
+if ((${#need[@]})); then
+  ensure_aur_helper
+  info "Installing AUR packages ($aur_helper)..."
+  "$aur_helper" -S --needed --noconfirm "${need[@]}"
+fi
 
 # --------------------------------------------------------------- scripts ----
 info "Installing theme scripts to ~/.local/bin..."
 mkdir -p "$HOME/.local/bin"
-for s in game-icons game-cursors papirus-accent eza-theme; do
+for s in game-icons game-cursors papirus-accent eza-theme live-wallpaper; do
   install -m755 "$REPO/bin/$s" "$HOME/.local/bin/$s"
 done
 
@@ -104,7 +111,8 @@ if [[ ! -f $state/cursor-theme ]]; then
 fi
 
 omarchy hook install theme-set "$REPO/omarchy/hypr-rice.sh" >/dev/null
-info "Installed theme-set hook: ~/.config/omarchy/hooks/theme-set.d/hypr-rice.sh"
+omarchy hook install post-boot "$REPO/omarchy/post-boot/hypr-rice.sh" >/dev/null
+info "Installed theme-set and post-boot hooks (~/.config/omarchy/hooks/*.d/hypr-rice.sh)"
 
 info "Pre-building themed cursor sets..."
 for dir in "$REPO/omarchy/themes/"*/; do
@@ -119,9 +127,14 @@ if ! grep -q "eza/colors.sh" "$HOME/.bashrc" 2>/dev/null; then
   info "Added eza theme colors to ~/.bashrc"
 fi
 
+"$HOME/.local/bin/live-wallpaper" || true   # start the current theme's video, if it has one
+
 echo
 info "${BLD}Done!${RST} Pick a theme from Omarchy's theme menu (Super+Ctrl+Shift+Space),"
 echo "  or run:  omarchy theme set elden-ring"
 echo
 echo "  Rice themes: elden-ring, ashen-flame, god-of-war, fallout, cyberpunk-2077,"
 echo "  catppuccin-mocha, plus extra wallpapers for Omarchy's gruvbox and tokyo-night."
+echo
+echo "  Video wallpapers: drop mp4/webm files into ~/Pictures/wallpapers/live/<theme>/"
+echo "  (works for any Omarchy theme). Control: live-wallpaper next | prev | off | on"
